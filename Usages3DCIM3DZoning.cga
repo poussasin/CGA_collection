@@ -1,0 +1,250 @@
+/**
+ * File:    Usages3DCIMRaleigh3DZoning.cga
+ * Created: 20 Apr 2014 21:53:37 GMT
+ * Author:  chri7180
+ */
+
+version "2015.0"
+
+# Usages from 3DCIM.
+# This file can be customized per locale.
+
+
+#@Range("Assembly","Education","Industrial","Mixed Use","Office","Public","Residential","Retail","Service","Transportation")
+
+ 
+# 3DCIM usages:
+# For each use, which color is used? 
+getUsageColor(usage) = 
+	case usage == "Assembly": "#627878"
+	case usage == "Education": "#6E6EFF"
+	case usage == "Industrial": "#8B61B3"
+	case usage == "Mixed Use": "#F79933"
+	case usage == "Office": "#F0A8A8"
+	case usage == "Public": "#8AB89B"
+	case usage == "Residential": "#FDFD83"
+	case usage == "Retail": "#E06565"
+	case usage == "Service": "#F76F6F"
+	case usage == "Transportation": "#DADADA"
+	else: "#FFFFFF"
+
+#UDO Heights/Colors
+getHeightColor(numberStories) = 
+	case numberStories >= 3 && numberStories < 4: "#E6E600"
+	case numberStories >= 4 && numberStories < 5: "#FAC761"
+	case numberStories >= 5 && numberStories < 7: "#A87000"
+	case numberStories >= 7 && numberStories < 12: "#A80000"
+	case numberStories >= 12 && numberStories < 20: "#73DFFF"
+	case numberStories >= 20 && numberStories < 40: "#00A9E6"
+	case numberStories >= 40: "#002673"
+	else: "#FFFFFF"
+
+
+	
+getUsageSetbackFront(usage) =
+	case usage == "Assembly": 1
+	case usage == "Agricultural": 1
+	case usage == "Educational": 1
+	case usage == "Industrial": 1
+	case usage == "Mercantile": 1
+	case usage == "Office": 1
+	case usage == "Public": 1
+	case usage == "Residential": 3
+	case usage == "Service": 1
+	case usage == "Storage": 1
+	case usage == "Transport": 1
+	case usage == "Utility": 1
+	case usage == "Other": 1
+	case usage == "Unknown": 1
+	else: 1
+	
+getUsageSetbackBack(usage) =
+	case usage == "Assembly": 1
+	case usage == "Agricultural": 1
+	case usage == "Educational": 1
+	case usage == "Industrial": 1
+	case usage == "Mercantile": 1
+	case usage == "Office": 1
+	case usage == "Public": 1
+	case usage == "Residential": 7
+	case usage == "Service": 1
+	case usage == "Storage": 1
+	case usage == "Transport": 1
+	case usage == "Utility": 1
+	case usage == "Other": 1
+	case usage == "Unknown": 1
+	else: 1
+	
+getUsageSetbackSide(usage) =
+	case usage == "Assembly": 1
+	case usage == "Agricultural": 1
+	case usage == "Educational": 1
+	case usage == "Industrial": 1
+	case usage == "Mercantile": 1
+	case usage == "Office": 1
+	case usage == "Public": 1
+	case usage == "Residential": 2
+	case usage == "Service": 1
+	case usage == "Storage": 1
+	case usage == "Transport": 1
+	case usage == "Utility": 1
+	case usage == "Other": 1
+	case usage == "Unknown": 1
+	else: 1
+
+getUsageMaxHeight(usage) =
+	case usage == "Assembly": 24
+	case usage == "Agricultural": 24
+	case usage == "Educational": 24
+	case usage == "Industrial": 24
+	case usage == "Mercantile": 24
+	case usage == "Office": 24
+	case usage == "Public": 24
+	case usage == "Residential": 12
+	case usage == "Service": 24
+	case usage == "Storage": 24
+	case usage == "Transport": 24
+	case usage == "Utility": 24
+	case usage == "Other": 24
+	case usage == "Unknown": 24
+	else: 24
+	
+getUsageMinHeight(usage) =
+	case usage == "Assembly": 16
+	case usage == "Agricultural": 12
+	case usage == "Educational": 16
+	case usage == "Industrial": 18
+	case usage == "Mercantile": 14
+	case usage == "Office": 14
+	case usage == "Public": 14
+	case usage == "Residential": 12
+	case usage == "Service": 14
+	case usage == "Storage": 10
+	case usage == "Transport": 16
+	case usage == "Utility": 16
+	case usage == "Other": 16
+	case usage == "Unknown": 16
+	else: 16
+	
+getUsageRoofMinHeight(usage) =
+	case usage == "Assembly": 1
+	case usage == "Agricultural": 1
+	case usage == "Educational": 1
+	case usage == "Industrial": 1
+	case usage == "Mercantile": 1
+	case usage == "Office": 1
+	case usage == "Public": 1
+	case usage == "Residential": 1
+	case usage == "Service": 1
+	case usage == "Storage": 1
+	case usage == "Transport": 1
+	case usage == "Utility": 1
+	case usage == "Other": 1
+	case usage == "Unknown": 1
+	else: 1
+	
+getUsageRoofMaxHeight(usage) =
+	case usage == "Assembly": 3
+	case usage == "Agricultural": 3
+	case usage == "Educational": 3
+	case usage == "Industrial": 3
+	case usage == "Mercantile": 3
+	case usage == "Office": 3
+	case usage == "Public": 3
+	case usage == "Residential": 3
+	case usage == "Service": 3
+	case usage == "Storage": 3
+	case usage == "Transport": 3
+	case usage == "Utility": 3
+	case usage == "Other": 3
+	case usage == "Unknown": 3
+	else: 3
+
+# 3DCIM usages:
+# For each use, which texture folder is used? 
+getUsageFacadeTextureFolder(usage) = 
+	case usage == "Assembly": "office"
+	case usage == "Agricultural": "industrial"
+	case usage == "Educational": "office"
+	case usage == "Industrial": "industrial"
+	case usage == "Mercantile": "retail"
+	case usage == "Office": "office"
+	case usage == "Public": "office"
+	case usage == "Residential": "residential"
+	case usage == "Service": "industrial"
+	case usage == "Storage": "industrial"
+	case usage == "Transport": "industrial"
+	case usage == "Utility": "industrial"
+	case usage == "Other": "office"
+	case usage == "Unknown": "office"
+	else: "office"
+
+
+#################################################
+#@Range("DEFAULT","BUSINESS INDUSTRY","BUSINESS PARK","CIVIC & COMMUNITY INSTITUTION","COMMERCIAL","COMMERCIAL & RESIDENTIAL","EDUCATIONAL INSTITUTION","HEALTH & MEDICAL CARE","MASS RAPID TRANSIT","PARK","PLACE OF WORSHIP","RESIDENTIAL","RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY","ROAD","SPECIAL USE","WHITE SITE")
+getZoningFacadeTextureFolder(zoning)= 
+	case zoning == "DEFAULT" : "OFFICE_CIVIC"
+	case zoning == "BUSINESS INDUSTRY": "UTILITY"
+	case zoning == "BUSINESS PARK": "WHITESITE"
+	case zoning == "CIVIC & COMMUNITY INSTITUTION": "OFFICE_CIVIC"
+	case zoning == "COMMERCIAL": "COMMERCIAL"
+	case zoning == "COMMERCIAL & RESIDENTIAL": "COMMERCIAL"
+	case zoning == "DEFAULT": "COMMERCIAL"
+	case zoning == "EDUCATIONAL INSTITUTION": "OFFICE_CIVIC"
+	case zoning == "HEALTH & MEDICAL CARE": "OFFICE_CIVIC"
+	case zoning == "MASS RAPID TRANSIT": "UTILITY"
+	case zoning == "PARK": "UTILITY"
+	case zoning == "PLACE OF WORSHIP": "UTILITY"
+	case zoning == "RESIDENTIAL": "RESIDENTIAL"
+	case zoning == "RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY": "RESIDENTIAL_W_1COM"
+	case zoning == "ROAD": "UTILITY"
+	case zoning == "SPECIAL USE": "WHITESITE"
+	case zoning == "WHITE SITE": "WHITESITE"
+	else: "OFFICE_CIVIC"
+
+########
+## FROM ZONING STANDARDS, EXCEL-DRIVEN
+
+getZoneData(zone) = 
+    case zone =="BUSINESS INDUSTRY": "213;173;199;#D5ADC7;Business Industry;Misc;1;;;;;;;;;"
+    case zone =="BUSINESS PARK - WHITE": "0;122;160;#007AA0;Business Park, White Site;Commercial;0.2;Parking;0.2;Office;0.6;;;;;"
+    case zone =="CEMETERY": "158;137;0;#9E8900;Cemetery;Misc;1;;;;;;;;;"
+    case zone =="CIVIC & COMMUNITY INSTITUTION": "204;0;33;#CC0021;Civic & Community Institution;Misc;1;;;;;;;;;"
+    case zone =="COMMERCIAL": "33;81;153;#215199;Commercial;Commercial;1;;;;;;;;;"
+    case zone =="COMMERCIAL & RESIDENTIAL": "53;173;229;#35ADE5;Commercial & Residential;Commercial;0.4;Residential;0.6;;;;;;;"
+    case zone =="EDUCATIONAL INSTITUTION": "242;242;193;#F2F2C1;Educational Institution;Misc;1;;;;;;;;;"
+    case zone =="HEALTH & MEDICAL CARE": "204;0;33;#CC0021;Health & Medical Care;Misc;1;;;;;;;;;"
+    case zone =="LIGHT RAPID TRANSIT": "255;255;255;#FFFFFF;Light Rapid Transit;Misc;1;;;;;;;;;"
+    case zone =="MASS RAPID TRANSIT": "255;255;255;#FFFFFF;Mass Rapid Transit;Misc;1;;;;;;;;;"
+    case zone =="OPEN SPACE": "170;178;0;#AAB200;Open Space;Misc;1;;;;;;;;;"
+    case zone =="PARK": "0;163;58;#00A33A;Park;Misc;1;;;;;;;;;"
+    case zone =="PARKING - MCSP": "255;255;255;#FFFFFF;Parking - MSCP;Misc;1;;;;;;;;;"
+    case zone =="PLACE OF WORSHIP": "204;0;33;#CC0021;Place of worship;Misc;1;;;;;;;;;"
+    case zone =="PORT / AIRPORT": "209;209;209;#D1D1D1;Port or Airport;Misc;1;;;;;;;;;"
+    case zone =="LANDED HOUSING": "244;186;130;#F4BA82;Landed Housing;Misc;1;;;;;;;;;"
+    case zone =="RESIDENTIAL": "244;186;130;#F4BA82;Residential;Residential;1;;;;;;;;;"
+    case zone =="RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY": "232;130;132;#E88284;Residential with Commerical at 1st Story;Commercial;0.01;Residential;0.99;;;;;;;"
+    case zone =="HOTEL": "165;158;198;#A59EC6;Hotel;Hotel;1;;;;;;;;;"
+    case zone =="ROAD": "255;255;255;#FFFFFF;Road;Misc;1;;;;;;;;;"
+    case zone =="SPECIAL USE": "79;102;2;#4F6602;Special Use;Misc;1;;;;;;;;;"
+    case zone =="SPORTS & RECREATION": "163;211;155;#A3D39B;Sports and Recreation;Misc;1;;;;;;;;;"
+    case zone =="TRANSPORT FACILITIES": "147;153;155;#93999B;Transportation Facility;Misc;1;;;;;;;;;"
+    case zone =="UTILITY": "147;153;155;#93999B;Utility;Misc;1;;;;;;;;;"
+    case zone =="WHITE": "245;242;242;#F5F2F2;White Site;Commercial;0.2;Parking;0.2;Office;0.2;Hotel;0.2;Residential;0.2;"
+    else: ""
+
+getZoneData_Color_R(zone) = float(listItem(getZoneData(zone),0))
+getZoneData_Color_G(zone) = float(listItem(getZoneData(zone),1))
+getZoneData_Color_B(zone) = float(listItem(getZoneData(zone),2))
+getZoneData_Color_Hex(zone) = listItem(getZoneData(zone),3)
+getZoneData_Friendly_Name(zone) = listItem(getZoneData(zone),4)
+getZoneData_Use_1(zone) = listItem(getZoneData(zone),5)
+getZoneData_Use_1_Percent(zone) = float(listItem(getZoneData(zone),6))
+getZoneData_Use_2(zone) = listItem(getZoneData(zone),7)
+getZoneData_Use_2_Percent(zone) = float(listItem(getZoneData(zone),8))
+getZoneData_Use_3(zone) = listItem(getZoneData(zone),9)
+getZoneData_Use_3_Percent(zone) = float(listItem(getZoneData(zone),10))
+getZoneData_Use_4(zone) = listItem(getZoneData(zone),11)
+getZoneData_Use_4_Percent(zone) = float(listItem(getZoneData(zone),12))
+getZoneData_Use_5(zone) = listItem(getZoneData(zone),13)
+getZoneData_Use_5_Percent(zone) = float(listItem(getZoneData(zone),14))

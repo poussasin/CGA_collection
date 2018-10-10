@@ -1,0 +1,501 @@
+/**
+ * File:    Zoning3D.cga
+ * Created: 3 Mar 2015 21:54:00 GMT
+ * Author:  geof7015 esri
+ */
+
+version "2015.0"
+
+import Usages3DCIM3DZoning:"rules/Zoning_and_Land_Use_Envelopes/Referenced/Usages3DCIM3DZoning.cga"
+
+## Attributes ##
+
+@Group("USAGE AND ZONING",3) @Order(0)
+@Range("Assembly","Education","Industrial","Mixed Use","Office","Public","Residential","Retail","Service","Transportation")
+attr usage = ""
+
+#@Range ("Envelope","BuildingAndEnvelope","Building")
+#attr ShowEnvelope = "BuildingAndEnvelope"
+
+@Range (0,1)
+attr Opacity = 0.4
+
+@Range ("Usage","Number Stories","Property Value")
+attr ThematicVisual = "Usage"
+
+@Range ("UsageMaxHeight","UsageMinHeight","UsageHeightRandom")
+attr HeightMethod = "UsageHeightRandom"
+
+@Range(heightRangeDefaultValue)
+attr totalHeight = 50
+
+@Range (2.7432, 10)
+attr StoryHeight = 3.6576
+
+const numberStories = totalHeight / StoryHeight
+
+##Setback Settings
+@Group("Setback Settings",100) @Order(0)
+@Range(heightRangeDefaultValue)
+attr SetbackHeight 	 = 
+	case setbackHeight > 0: setbackHeight
+	case setbackHeight == 0: 10
+	else: 8
+@Range(stepbackRangeDefaultValue)
+attr SetbackFront =
+	case setbackFront > 0: setbackFront
+	else: stepbackStepbackDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr SetbackBack =
+	case setbackBack > 0: setbackBack
+	else: stepbackStepbackDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr SetbackSide = 
+	case setbackSide > 0: setbackSide
+	else: stepbackStepbackDefaultValue
+@Range(heightRangeDefaultValue)
+
+##Stepback 1 Settings
+@Group("Stepback 1 Settings",110) @Order(0)
+attr enableStepback1 = 
+	case StepbackHeight1 > 0 || StepbackFront1 > 0 || StepbackBack1 > 0 || StepbackSide1 > 0: true
+	else: false
+	
+@Range(heightRangeDefaultValue)
+attr StepbackHeight1 =
+	case stepbackHeight1 > 0: stepbackHeight1
+	else: stepbackHeightDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackFront1 = 
+	case stepbackFront1 > 0: stepbackFront1
+	else: stepbackStepbackDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackBack1 =
+	case stepbackBack1 > 0: stepbackBack1
+	else: stepbackStepbackDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackSide1 =
+	case stepbackSide1 > 0: stepbackSide1
+	else: stepbackStepbackDefaultValue
+	
+##Stepback 2 Settings
+#TODO add conditional settings to enableStepback operations to auto-connect to GIS Feature Class Data Attributes.
+@Group("Stepback 2 Settings",120) @Order(0)
+attr enableStepback2 = false
+@Range(heightRangeDefaultValue)
+attr StepbackHeight2 =
+	case stepbackHeight2 > 0: stepbackHeight2
+	else: stepbackHeightDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackFront2 = 
+	case stepbackFront2 > 0: stepbackFront2
+	else: stepbackStepbackDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackBack2 =
+	case stepbackBack2 > 0: stepbackBack2
+	else: stepbackStepbackDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackSide2 =
+	case stepbackSide2 > 0: stepbackSide2
+	else: stepbackStepbackDefaultValue
+	
+##Stepback 3 Settings
+@Group("Stepback 3 Settings",130) @Order(0)
+attr enableStepback3 = false
+@Range(heightRangeDefaultValue)
+attr StepbackHeight3 =
+	case stepbackHeight3 > 0: stepbackHeight3
+	else: stepbackHeightDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackFront3 = 
+	case stepbackFront3 > 0: stepbackFront3
+	else: stepbackStepbackDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackBack3 =
+	case stepbackBack3 > 0: stepbackBack3
+	else: stepbackStepbackDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackSide3 =
+	case stepbackSide3 > 0: stepbackSide3
+	else: stepbackStepbackDefaultValue
+	
+##Stepback 4 Settings
+@Group("Stepback 4 Settings",140) @Order(0)
+attr enableStepback4 = false
+@Range(heightRangeDefaultValue)
+attr StepbackHeight4 =
+	case stepbackHeight4 > 0: stepbackHeight4
+	else: stepbackHeightDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackFront4 = 
+	case stepbackFront4 > 0: stepbackFront4
+	else: stepbackStepbackDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackBack4 =
+	case stepbackBack4 > 0: stepbackBack4
+	else: stepbackStepbackDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackSide4 =
+	case stepbackSide4 > 0: stepbackSide4
+	else: stepbackStepbackDefaultValue
+	
+##Stepback 5 Settings
+@Group("Stepback 5 Settings",150) @Order(0)
+attr enableStepback5 = false
+@Range(heightRangeDefaultValue)
+attr StepbackHeight5 =
+	case stepbackHeight5 > 0: stepbackHeight5
+	else: stepbackHeightDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackFront5 = 
+	case stepbackFront5 > 0: stepbackFront5
+	else: stepbackStepbackDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackBack5 =
+	case stepbackBack5 > 0: stepbackBack5
+	else: stepbackStepbackDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackSide5 =
+	case stepbackSide5 > 0: stepbackSide5
+	else: stepbackStepbackDefaultValue
+
+##Stepback 6 Settings
+@Group("Stepback 6 Settings",160) @Order(0)
+attr enableStepback6 = false
+@Range(heightRangeDefaultValue)
+attr StepbackHeight6 =
+	case stepbackHeight6 > 0: stepbackHeight6
+	else: stepbackHeightDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackFront6 = 
+	case stepbackFront6 > 0: stepbackFront6
+	else: stepbackStepbackDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackBack6 =
+	case stepbackBack6 > 0: stepbackBack6
+	else: stepbackStepbackDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackSide6 =
+	case stepbackSide6 > 0: stepbackSide6
+	else: stepbackStepbackDefaultValue
+	
+##Stepback 7 Settings
+@Group("Stepback 7 Settings",170) @Order(0)
+attr enableStepback7 = false
+@Range(heightRangeDefaultValue)
+attr StepbackHeight7 =
+	case stepbackHeight7 > 0: stepbackHeight7
+	else: stepbackHeightDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackFront7 = 
+	case stepbackFront7 > 0: stepbackFront7
+	else: stepbackStepbackDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackBack7 =
+	case stepbackBack7 > 0: stepbackBack7
+	else: stepbackStepbackDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackSide7 =
+	case stepbackSide7 > 0: stepbackSide7
+	else: stepbackStepbackDefaultValue
+	
+##Stepback 8 Settings
+@Group("Stepback 8 Settings",180) @Order(0)
+attr enableStepback8 = false
+@Range(heightRangeDefaultValue)
+attr StepbackHeight8 =
+	case stepbackHeight8 > 0: stepbackHeight8
+	else: stepbackHeightDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackFront8 = 
+	case stepbackFront8 > 0: stepbackFront8
+	else: stepbackStepbackDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackBack8 =
+	case stepbackBack8 > 0: stepbackBack8
+	else: stepbackStepbackDefaultValue
+@Range(stepbackRangeDefaultValue)
+attr StepbackSide8 =
+	case stepbackSide8 > 0: stepbackSide8
+	else: stepbackStepbackDefaultValue
+
+@StartRule
+Parcel -->
+	MakeSetbacks
+
+MakeSetbacks -->
+	setback(SetbackFront) {street.front: Yard | remainder:
+	setback(SetbackBack) {street.back: Yard | remainder:
+	setback(SetbackSide) {street.side: Yard | remainder: SetbackMath}}}
+	
+SetbackMath -->
+	case totalHeight > 0:
+		case totalHeight > (setbackHeightCalculated)&& enableStepback1 == false: 
+			extrude(world.y, totalHeight)
+			comp(f){ top : Top | side : StepbackSettings}
+		case totalHeight > (setbackHeightCalculated) && enableStepback1 == true:
+			extrude (world.y,SetbackHeight)
+			comp(f){ top : MakeStepback1 | side : StepbackSettings}
+		else:
+			colorZoningOptions
+			print(setbackHeightCalculated)
+			print("error in SetbackMath: Defined SetbackHeight >= totalHeight'")
+	else: colorZoningOptions
+
+MakeStepback1 --> 
+	case enableStepback1 == true:
+		setback(StepbackFront1) {street.front: StepbackSettings | remainder: 
+		setback(StepbackBack1) {street.back: StepbackSettings | remainder:
+		setback(StepbackSide1) {street.side: StepbackSettings | remainder: Stepback1Math}}}
+		else:StepbackSettings
+
+Stepback1Math-->
+	case totalHeight > (SetbackHeight + StepbackHeight1)&& enableStepback2 == false:
+		extrude(world.y, totalHeight - setbackHeightCalculated)
+		comp(f){ top : Top | side : StepbackSettings}
+	case totalHeight > (stepback1HeightCalculated) && enableStepback2 == true: 
+		extrude (world.y,StepbackHeight1)
+		comp(f){ top : MakeStepback2 | side : StepbackSettings}
+	else:
+		color(1,0,0)
+		print("error in Stepback1HeightMath: Defined StepbackHeight1 >= totalHeight'")
+
+	
+MakeStepback2 --> 
+	case enableStepback2 == true && StepbackHeight1 != 0:
+		setback(StepbackFront2) {street.front: StepbackSettings | remainder: 
+		setback(StepbackBack2) {street.back: StepbackSettings | remainder:
+		setback(StepbackSide2) {street.side: StepbackSettings | remainder: Stepback2Math}}}
+		else:StepbackSettings
+	
+Stepback2Math-->
+	case totalHeight > (stepback2HeightCalculated)&& enableStepback3 == false:
+		extrude(world.y, totalHeight - stepback1HeightCalculated)
+		comp(f){ top : Top | side : StepbackSettings}
+	case totalHeight > (stepback2HeightCalculated) && enableStepback3 == true:
+		extrude (world.y,StepbackHeight2)
+		comp(f){ top : MakeStepback3 | side : StepbackSettings}
+	else:
+		color(1,0,0)
+		print("error in Stepback2HeightMath: Defined StepbackHeight2 >= totalHeight'")
+	
+
+MakeStepback3 --> 
+	case enableStepback3 == true && StepbackHeight2 != 0:
+		setback(StepbackFront3) {street.front: StepbackSettings | remainder: 
+		setback(StepbackBack3) {street.back: StepbackSettings | remainder:
+		setback(StepbackSide3) {street.side: StepbackSettings | remainder: Stepback3Math}}}
+		else:StepbackSettings
+	
+Stepback3Math-->
+	case totalHeight > (stepback3HeightCalculated) && enableStepback4 == false:
+		extrude(world.y, totalHeight - stepback2HeightCalculated)
+		comp(f){ top : Top | side : StepbackSettings}
+	case totalHeight > (stepback3HeightCalculated) && enableStepback4 == true:
+		extrude (world.y,StepbackHeight3)
+		comp(f){ top : MakeStepback4 | side : StepbackSettings}
+	else:
+		color(1,0,0)
+		print("error in Stepback3HeightMath: Defined StepbackHeight3 >= totalHeight'")
+
+MakeStepback4 --> 
+	case enableStepback4 == true && StepbackHeight3 != 0:
+		setback(StepbackFront4) {street.front: StepbackSettings | remainder: 
+		setback(StepbackBack4) {street.back: StepbackSettings | remainder:
+		setback(StepbackSide4) {street.side: StepbackSettings | remainder: Stepback4Math}}}
+		else:StepbackSettings
+	
+Stepback4Math-->
+	case totalHeight > (stepback4HeightCalculated) && enableStepback5 == false:
+	print("a")
+		extrude(world.y, totalHeight - stepback3HeightCalculated)
+		comp(f){ top : Top | side : StepbackSettings}
+	case totalHeight > (stepback4HeightCalculated) && enableStepback5 == true:
+	print("b")
+		extrude (world.y,StepbackHeight4)
+		comp(f){ top : MakeStepback5 | side : StepbackSettings}
+	else:
+		color(1,0,0)
+		print("error in Stepback4HeightMath: Defined StepbackHeight4 >= totalHeight'")
+
+MakeStepback5 --> 
+	case enableStepback5 == true && StepbackHeight4 != 0:
+		setback(StepbackFront5) {street.front: StepbackSettings | remainder: 
+		setback(StepbackBack5) {street.back: StepbackSettings | remainder:
+		setback(StepbackSide5) {street.side: StepbackSettings | remainder: Stepback5Math}}}
+		else:StepbackSettings
+	
+Stepback5Math-->
+	case totalHeight > (stepback5HeightCalculated) && enableStepback6 == false:
+		extrude(world.y, totalHeight - stepback4HeightCalculated)
+		comp(f){ top : Top | side : StepbackSettings}
+	case totalHeight > (stepback5HeightCalculated) && enableStepback6 == true:
+		extrude (world.y,StepbackHeight5)
+		comp(f){ top : MakeStepback6 | side : StepbackSettings}
+	else:
+		color(1,0,0)
+		print("error in Stepback5HeightMath: Defined StepbackHeight5 >= totalHeight'")
+
+MakeStepback6 --> 
+	case enableStepback6 == true && StepbackHeight5 != 0:
+		setback(StepbackFront6) {street.front: StepbackSettings | remainder: 
+		setback(StepbackBack6) {street.back: StepbackSettings | remainder:
+		setback(StepbackSide6) {street.side: StepbackSettings | remainder: Stepback6Math}}}
+		else:StepbackSettings
+	
+Stepback6Math-->
+	case totalHeight > (stepback6HeightCalculated) && enableStepback7 == false:
+		extrude(world.y, totalHeight - stepback5HeightCalculated)
+		comp(f){ top : Top | side : StepbackSettings}
+	case totalHeight > (stepback6HeightCalculated) && enableStepback7 == true:
+		extrude (world.y,StepbackHeight6)
+		comp(f){ top : MakeStepback7 | side : StepbackSettings}
+	else:
+		color(1,0,0)
+		print("error in Stepback6HeightMath: Defined StepbackHeight6 >= totalHeight'")
+
+MakeStepback7 --> 
+	case enableStepback7 == true && StepbackHeight6 != 0:
+		setback(StepbackFront7) {street.front: StepbackSettings | remainder: 
+		setback(StepbackBack7) {street.back: StepbackSettings | remainder:
+		setback(StepbackSide7) {street.side: StepbackSettings | remainder: Stepback7Math}}}
+		else:StepbackSettings
+	
+Stepback7Math-->
+	case totalHeight > (stepback7HeightCalculated) && enableStepback8 == false:
+		extrude(world.y, totalHeight - stepback6HeightCalculated)
+		comp(f){ top : Top | side : StepbackSettings}
+	case totalHeight > (stepback7HeightCalculated) && enableStepback8 == true:
+		extrude (world.y,StepbackHeight7)
+		comp(f){ top : MakeStepback8 | side : StepbackSettings}
+	else:
+		color(1,0,0)
+		print("error in Stepback7HeightMath: Defined StepbackHeight7 <= totalHeight'")
+
+MakeStepback8 --> 
+	case enableStepback8 == true && StepbackHeight7 != 0:
+		setback(StepbackFront8) {street.front: StepbackSettings | remainder: 
+		setback(StepbackBack8) {street.back: StepbackSettings | remainder:
+		setback(StepbackSide8) {street.side: StepbackSettings | remainder: Stepback6Math}}}
+		else:StepbackSettings
+
+Stepback8Math-->
+	case totalHeight > (stepback8HeightCalculated) && enableStepback8 == true:
+		extrude(world.y, totalHeight - stepback6HeightCalculated)
+		comp(f){ top : Top | side : StepbackSettings}
+	else:
+		print("error in Stepback8HeightMath: Defined StepbackHeight8 <= totalHeight'")
+		color(1,0,0)
+
+StepbackSettings -->
+	colorZoningOptions
+	report ("StepbackTotalHeight", StepbacktotalHeight)
+	
+Top -->
+	StepbackSettings
+
+#MakeEnvelope -->
+	#case ShowEnvelope == "Envelope":
+	#extrude(HeightSelector)
+	#case ShowEnvelope == "ShowBuildingandEnvelope":
+	#extrude(HeightSelector)
+	#BuildingFootprintCleanup
+	#else: 
+	#BuildingFootprintCleanup
+
+#BuildingFootprintCleanup -->
+#	building.BuildingFootprint
+
+Yard --> 
+ color (0,1,0)
+ 
+colorZoningOptions-->
+	case ThematicVisual == "Usage":
+		color(Usages3DCIM3DZoning.getUsageColor(usage))
+		set(material.opacity,Opacity)
+	case ThematicVisual == "Number Stories":
+		color(getHeightColor)
+		set(material.opacity,Opacity)
+	#case ThematicVisual == "Property Value":
+		#color ( colorRamp("yellowToRed",colorRangeValueNormalized))
+	else: 
+		color ("#ffffff")
+		set(material.opacity,Opacity)
+
+@Hidden
+attr TOTAL_VALUE_ASSD = 0
+
+#colorRangeValueNormalized = 1 / (TOTAL_VALUE_ASSD - listFirst(TOTAL_VALUE_ASSD)) * (400 - 0)
+
+const HeightSelector =
+	case totalHeight > 0: totalHeight
+	case HeightMethod == "UsageMaxHeight": usageMaxHeight
+	case HeightMethod == "UsageMinHeight": usageMinHeight
+	else: usageHeightRandom
+
+const getHeightColor = Usages3DCIM3DZoning.getHeightColor(numberStories)
+const usageMaxHeight = Usages3DCIM3DZoning.getUsageMaxHeight(usage)
+const usageMinHeight = Usages3DCIM3DZoning.getUsageMinHeight(usage)
+const usageHeightRandom = rand(Usages3DCIM3DZoning.getUsageMaxHeight(usage),Usages3DCIM3DZoning.getUsageMinHeight(usage))
+const setbackHeight = 8
+const setbackFront = Usages3DCIM3DZoning.getUsageSetbackFront(usage)
+const setbackBack = Usages3DCIM3DZoning.getUsageSetbackBack(usage)
+const setbackSide = Usages3DCIM3DZoning.getUsageSetbackSide(usage)
+const stepbackHeight1 = 8
+const stepbackFront1 = 1
+const stepbackBack1 = 1
+const stepbackSide1 = 1
+const stepbackHeight2 = 8
+const stepbackFront2 = 1
+const stepbackBack2 = 1
+const stepbackSide2 = 1
+const stepbackHeight3 = 8
+const stepbackFront3 = 1
+const stepbackBack3 = 1
+const stepbackSide3 = 1
+const stepbackHeight4 = 8
+const stepbackFront4 = 1
+const stepbackBack4 = 1
+const stepbackSide4 = 1
+const stepbackHeight5 = 8
+const stepbackFront5 = 1
+const stepbackBack5 = 1
+const stepbackSide5 = 1
+const stepbackHeight6 = 8
+const stepbackFront6 = 1
+const stepbackBack6 = 1
+const stepbackSide6 = 1
+const stepbackHeight7 = 8
+const stepbackFront7 = 1
+const stepbackBack7 = 1
+const stepbackSide7 = 1
+const stepbackHeight8 = 8
+const stepbackFront8 = 1
+const stepbackBack8 = 1
+const stepbackSide8 = 1
+const stepbackRangeDefaultValue = "0,40"
+const heightRangeDefaultValue = "0,300"
+const stepbackStepbackDefaultValue = 3
+const stepbackHeightDefaultValue = 6
+
+const StepbacktotalHeight = 
+	 case enableStepback1 == false: SetbackHeight else:
+	(case enableStepback1 : StepbackHeight1 else: 0) +
+	(case enableStepback2 : StepbackHeight2 else: 0) +
+	(case enableStepback3 : StepbackHeight3 else: 0) +
+	(case enableStepback4 : StepbackHeight4 else: 0) +
+	(case enableStepback5 : StepbackHeight5 else: 0) +
+	(case enableStepback6 : StepbackHeight6 else: 0) +
+	(case enableStepback7 : StepbackHeight7 else: 0) +
+	(case enableStepback8 : StepbackHeight8 else: 0)
+
+const setbackHeightCalculated = SetbackHeight
+const stepback1HeightCalculated = SetbackHeight + StepbackHeight1
+const stepback2HeightCalculated = SetbackHeight + StepbackHeight1 + StepbackHeight2
+const stepback3HeightCalculated = SetbackHeight + StepbackHeight1 + StepbackHeight2 + StepbackHeight3
+const stepback4HeightCalculated = SetbackHeight + StepbackHeight1 + StepbackHeight2 + StepbackHeight3 + StepbackHeight4
+const stepback5HeightCalculated = SetbackHeight + StepbackHeight1 + StepbackHeight2 + StepbackHeight3 + StepbackHeight4 + StepbackHeight5
+const stepback6HeightCalculated = SetbackHeight + StepbackHeight1 + StepbackHeight2 + StepbackHeight3 + StepbackHeight4 + StepbackHeight5 + StepbackHeight6
+const stepback7HeightCalculated = SetbackHeight + StepbackHeight1 + StepbackHeight2 + StepbackHeight3 + StepbackHeight4 + StepbackHeight5 + StepbackHeight6 + StepbackHeight7
+const stepback8HeightCalculated = SetbackHeight + StepbackHeight1 + StepbackHeight2 + StepbackHeight3 + StepbackHeight4 + StepbackHeight5 + StepbackHeight6 + StepbackHeight7 + StepbackHeight7
+

@@ -1,0 +1,196 @@
+
+version "2015.0"
+
+#@Handle(shape=UnderRoof)
+@Handle(shape=UnderRoof, reference=center, slip=screen)
+@Range(3, 100)
+attr height = 7
+
+@Handle(shape=UnderRoof, reference=radial, align=bottomLeft)
+@Range(1.5, 9)
+attr bottomRadius = 2
+
+@Handle(shape=UnderRoof, reference=radial, align=topLeft)
+@Range(1.0,5.1)
+attr topRadius = 1
+
+@Handle(shape=Blade, axis=x, reference=origin)
+attr bladeLength = height * 0.6
+
+@Handle(shape=Windoor, axis=y)
+@Range(0.1,1.5)
+attr windowScale = 1
+
+@Handle(shape=TopFloor, type=selector, axis=y, align=top)
+@Range(windmill, lighthouse)
+attr decoration = windmill
+
+const windmill="windmill"
+const lighthouse="lighthouse"
+const bladeDepth = 0.1
+const finDepth = bladeLength * 0.2
+
+narrower() = (bottomRadius -topRadius) * 2 # difference between top and bottom diameters
+wallAngle() = atan2(narrower/2, height)
+platformSize() = case decoration==windmill : 0.05 else: 0.4
+
+min (a,b)=
+	case a < b : a
+	else: b
+	
+max (a,b)=
+	case a > b : a
+	else: b
+
+Lot -->
+	set (topRadius, min (bottomRadius -0.1, max (0.5, topRadius)) )
+	t (-bottomRadius, 0, -bottomRadius)
+	s (bottomRadius*2, 0,bottomRadius*2)
+	Roof
+	Blades
+	extrude (bottomRadius*2 * height / narrower)
+	i("assets/unitized cylinder.obj")
+	split(y)
+	{
+		height:UnderRoof |
+		~1 : NIL
+	}
+	
+UnderRoof -->
+	split(y)
+	{
+		height - 2.1 : LowerFloors |
+		~1 : TopFloorWithPlatform
+	}
+	
+TopFloorWithPlatform -->
+	split(y) 
+	{
+		0.1 : t ('-platformSize/2, 0, '-platformSize/2) s('1+platformSize,'1, '1+platformSize) X |
+		2 :  TopFloor
+	}
+	
+TopFloor -->
+	case decoration==windmill: X
+	else: 
+	split(y) {
+		0.5 : X |
+		 ~1 : 
+		comp(f) { 5 : NIL | all :  Shade} 
+	}
+	t((scope.sx - 1)/2, 0, (scope.sz - 1)/2) s (1, '1, 1) X
+
+
+Shade -->
+	[split(u, unitSpace, 0) {
+		0.3 :  alignScopeToGeometry(yUp, any, longest) s('1,0.05, 0.1) extrude (-0.1) X |
+		0.5 : NIL
+	}*]
+	
+LowerFloors -->
+	split(y) 
+	{
+		~1.8 :  Floor2 ( 0.3 + windowScale * 0.7 *  ( split.total - split.index ) / split.total) 
+	}*
+	
+Floor2 (x) -->
+	set(trim.horizontal, false)
+	set(trim.vertical, false)
+	comp(f) 
+	{
+		0: X Windoor(x) |
+		all : X
+	}
+
+Windoor(x) -->
+	t('0.5, '0.0, 0)
+	s (x,x*1.2,1)
+	t('-0.5, '-0.0, -0.5)
+	r(scopeCenter, 0, 180,0)
+	Windoor
+
+Windoor -->
+	case split.index == 0:
+	i("door.obj")
+	else: i("window.obj")
+	
+
+Roof --> 
+	s (bottomRadius*2-narrower, 1, bottomRadius*2 - narrower)
+	t ( (narrower/2) , height, (narrower/2) )
+	i ("unitized circle.obj")
+	offset (0.2 + platformSize)
+	roofPyramid(30) 
+	X
+
+Blades -->
+  case decoration==windmill:
+  	[t (scope.sx/2 , height -1, -2*bladeDepth )
+  	r(0,0, rand(0,90))
+  	s (bladeLength, 0, bladeDepth )
+  	FourBlades]
+  	t (scope.sx/2,height -0.5, bottomRadius+topRadius)
+  	s(1, 0.1, 1.5)
+  	[t(0, 0.5,0) s(0.05,'1,'1.8) extrude (0.05) X]
+  	[t(0, -1.3,0) s(0.05,'1,'1.8) r(-45,0,0)  extrude (0.05) X]
+  	t (0,0, scope.sz*1.5)
+  	r(0,0,90)
+  	Fantail (rand(0,360))
+  else: NIL
+ 
+Fantail (o) -->
+  F(0,o)
+  F(1,o)
+  F(2,o)
+  F(3,o)
+  F(4,o)
+  F(5,o)
+
+F(x,o) --> // repeat the fan for the fantail
+  t ( '0.5, 0, 0)
+  r (  0, 60*x + o, 0)
+  t ('-0.5, 0, 0 )
+  i ( "fan.obj" ) X
+  
+FourBlades -->
+  Blade
+  r(0,0, 90)
+  Blade
+  r(0,0, 90)
+  Blade
+  r(0,0, 90)
+  Blade
+  r(0,0, 45)
+  s (bladeDepth*2, 1, bottomRadius)
+  extrude (bladeDepth*2)
+  t (-bladeDepth,-bladeDepth,-0.03)
+  X
+ 
+Blade --> // one blade of the windmill
+	extrude (bladeDepth + finDepth)
+	split (y)
+	{
+		bladeDepth : X |
+		finDepth : Grid1
+	}
+	
+Grid1 --> // mesh grid for windmill blades
+	s (scope.sx, scope.sy, bladeDepth * 0.2)
+	split (x)  
+	{
+		bladeLength * 0.10 : NIL |
+		~1: split (x) { bladeDepth * 3 : Grid2}* 
+	}
+	
+Grid2 -->
+	split (x)
+	{
+		bladeDepth * 0.2 : X |
+		~1 : split (y) 
+		{
+			~bladeDepth*2 : NIL |
+			bladeDepth * 0.2 : X
+			
+		}* |
+		bladeDepth * 0.2 : X 
+	}

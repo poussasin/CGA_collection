@@ -1,0 +1,971 @@
+/**
+ * File:    Zoning_Usage_Typology.cga
+ * Created: 25 Apr 2014 15:40:32 GMT
+ * Author:  chri7180
+ */
+
+version "2015.0"
+
+# @Hidden
+import TEXT: "3D_Text.cga" #(Transparency, Rotation, Tilt, Kerning, Line_Spacing, Stretch_Horizontal)
+
+
+#########################################
+#
+# Since usages are displayed in different ways depending on the
+# initial shapes, attributes related to the start shape geometry
+# are passed into this rule, and usage data can be called from
+# this rule to help display the model, driven by the importing rule.
+# 
+# Passed in from importing rule:
+
+@Hidden
+attr Zoning = ""
+@Hidden
+attr Typology = ""
+
+#@Hidden
+#attr Site_Area = 0
+#@Hidden
+#attr Gross_Plot_Ratio = 0
+@Hidden
+attr Gross_Floor_Area = 0
+
+@Hidden
+attr ImportedFrom = "" 
+
+##############################################
+TEST --> 
+	print("TEST Gross_Floor_Area = " + Gross_Floor_Area)
+
+@Group("USAGE PROFILE", 10) @Order(20)
+@Range(0,100)
+attr Use_Residential = 
+	case ImportedFrom == "Parcel": getZoningData_Use_Residential(Zoning)
+	else: getTypologyData_Use_Residential(Typology)
+
+
+@Group("USAGE PROFILE") @Order(21)
+@Range(0,100)
+attr Use_Hotel =
+	case ImportedFrom == "Parcel": getZoningData_Use_Hotel(Zoning)
+	else: getTypologyData_Use_Hotel(Typology)
+
+@Group("USAGE PROFILE") @Order(22)
+@Range(0,100)
+attr Use_Office =
+	case ImportedFrom == "Parcel": getZoningData_Use_Office(Zoning)
+	else: getTypologyData_Use_Office(Typology)
+
+@Group("USAGE PROFILE") @Order(23)
+@Range(0,100)
+attr Use_Commercial =
+	case ImportedFrom == "Parcel": getZoningData_Use_Commercial(Zoning)
+	else: getTypologyData_Use_Commercial(Typology)
+
+@Group("USAGE PROFILE") @Order(24)
+@Range(0,100)
+attr Use_Parking =
+	case ImportedFrom == "Parcel": getZoningData_Use_Parking(Zoning)
+	else: getTypologyData_Use_Parking(Typology)
+
+@Group("USAGE PROFILE") @Order(25)
+@Range(0,100)
+attr Use_Sky_Garden = 
+	case ImportedFrom == "Parcel": getZoningData_Use_Sky_Garden(Zoning)
+	else: getTypologyData_Use_Sky_Garden(Typology)
+
+@Group("USAGE PROFILE") @Order(26)
+@Range(0,100)
+attr Use_Utility = 
+	case ImportedFrom == "Parcel": getZoningData_Use_Utility(Zoning)
+	else: getTypologyData_Use_Utility(Typology)
+
+@Group("USAGE PROFILE") @Order(27)
+@Range(0,100)
+attr Use_Misc = 
+	case ImportedFrom == "Parcel": getZoningData_Use_Misc(Zoning)
+	else: getTypologyData_Use_Misc(Typology)
+
+
+#######################
+
+@Group ("TARGET PERFORMANCE", 20) @Order(1) @Range(0,100)
+attr Reduction_Electric = 0
+
+@Group ("TARGET PERFORMANCE") @Order(2) @Range(0,100)
+attr Reduction_WaterPotable = 0
+
+@Group ("TARGET PERFORMANCE") @Order(3) @Range(0,100)
+attr Reduction_WaterNonPotable = 0
+
+@Group ("TARGET PERFORMANCE") @Order(4) @Range(0,100)
+attr Reduction_Gas = 0
+
+@Group ("TARGET PERFORMANCE") @Order(10) @Range(0,100)
+attr Reduction_Waste_Solid = 0
+
+@Group ("TARGET PERFORMANCE") @Order(11) @Range(0,100)
+attr Reduction_Waste_Black_Water = 0
+
+@Group ("TARGET PERFORMANCE") @Order(12) @Range(0,100)
+attr Reduction_Waste_Gray_Water = 0
+
+@Group ("TARGET PERFORMANCE") @Order(13) @Range(0,100)
+attr Reduction_Waste_Recyclable = 0
+
+
+#@Group ("TARGET PERFORMANCE") @Order(10) @Range(0,100)
+#attr Graywater_Recycled = 0
+
+@Group("BUILDING COST ESTIMATION",30) @Order(0)
+attr Cost_Per_M2 = 1400
+
+@Group("BUILDING COST ESTIMATION") @Order(1)
+@Range(0,100)
+attr Reduction_Construction_Waste = 0
+
+#####################
+
+@Group("MISC",400)
+@Range(-180,180)
+attr Bar_Chart_Rotation = 0
+
+######################################
+
+const Use_Color_Residential = getUsageData_Color_Hex("Residential")
+const Use_Color_Hotel = getUsageData_Color_Hex("Hotel")
+const Use_Color_Office = getUsageData_Color_Hex("Office")
+const Use_Color_Commercial = getUsageData_Color_Hex("Commercial")
+const Use_Color_Parking = getUsageData_Color_Hex("Parking")
+const Use_Color_Sky_Garden = getUsageData_Color_Hex("Sky_Garden")
+const Use_Color_Utility = getUsageData_Color_Hex("Utility")
+const Use_Color_Misc = getUsageData_Color_Hex("Misc")
+
+
+################
+
+
+
+
+
+
+
+
+
+NoCGAWarnings --> 
+	ReportUsages(0, 0)
+	BarChart(0)
+
+@Hidden
+attr _grossFloorArea = 0
+ 
+_gfaResidential = Use_Residential * _grossFloorArea / 100
+_gfaHotel = Use_Hotel * _grossFloorArea / 100
+_gfaOffice = Use_Office * _grossFloorArea / 100
+_gfaCommercial = Use_Commercial * _grossFloorArea / 100
+_gfaSkyGarden = Use_Sky_Garden * _grossFloorArea / 100
+_gfaUtility = Use_Utility * _grossFloorArea / 100
+_gfaMisc = Use_Misc * _grossFloorArea / 100
+_gfaParking = Use_Parking * _grossFloorArea / 100
+
+ReportUsages(grossFloorArea, sign) --> 
+	set(_grossFloorArea, grossFloorArea)
+
+	# xx  Will requires area put onto parcel obj attribute (py script)
+	#Parcel_Area
+	#Parcel_Coverage
+
+	# FOR SINGLE BUILDING OR PARCEL - NOT SUMMABLE. 
+	# Only meaningful when applied to one shape at a time.
+	# Uses percentages. Adds to one hundred for each building.
+	report("Use_Residential", Use_Residential)
+	report("Use_Hotel", Use_Hotel)
+	report("Use_Office", Use_Office)
+	report("Use_Commercial", Use_Commercial)
+	report("Use_Sky_Garden", Use_Sky_Garden)
+	report("Use_Utility", Use_Utility)
+	report("Use_Misc", Use_Misc)
+	report("Use_Parking", Use_Parking)
+	report("Total_Use_Check", Use_Residential + Use_Hotel + Use_Office
+		+ Use_Commercial + Use_Sky_Garden + Use_Utility + Use_Misc + Use_Parking)
+
+	# FOR SUMMATION ACROSS BUILDINGS, PARCELS, or REGIONS.
+	# GFA per usage.
+	
+	report("Gross_Floor_Area", _grossFloorArea * sign)
+	report("GFA_Residential", _gfaResidential * sign)
+	report("GFA_Hotel", _gfaHotel * sign)
+	report("GFA_Office", _gfaOffice * sign)
+	report("GFA_Commercial", _gfaCommercial * sign)
+	report("GFA_Sky_Garden", _gfaSkyGarden * sign)
+	report("GFA_Utility", _gfaUtility * sign)
+	report("GFA_Misc", _gfaMisc * sign)
+	report("GFA_Parking", _gfaParking * sign)
+
+	report("Car_Demand", 
+ 		(carsRequired("Residential", _gfaResidential) +
+		carsRequired("Hotel", _gfaHotel) +
+		carsRequired("Office", _gfaOffice) +
+		carsRequired("Commercial", _gfaCommercial) +
+		carsRequired("Sky_Garden", _gfaSkyGarden) +
+		carsRequired("Utility", _gfaUtility) +
+		carsRequired("Misc", _gfaMisc)) * sign)
+
+	report("Car_Spaces", carsRequired("Parking", _gfaParking) * sign) 
+	
+	report("Car_Net",  
+		(carsRequired("Residential", _gfaResidential) +
+		carsRequired("Hotel", _gfaHotel) +
+		carsRequired("Office", _gfaOffice) +
+		carsRequired("Commercial", _gfaCommercial) +
+		carsRequired("Sky_Garden", _gfaSkyGarden) +
+		carsRequired("SkyUtility", _gfaUtility) +
+		carsRequired("Misc", _gfaMisc) +
+		carsRequired("Parking", _gfaParking)) * sign)
+
+	
+	# Unit counts and populations.
+	report("Dwelling Units", dwellingUnitCount(_gfaResidential) * sign) # XX reevaluate this naming convention
+	report("Hotel Rooms", hotelRoomCount(_gfaHotel) * sign)
+	# Expand unit reporting later.
+
+	# TARGETS
+	# Consumption 
+	report("Util_Electrical", _Build_Perf_Target_Electric) 
+	report("Util_Gas", _Build_Perf_Target_Water_Potable) 
+	report("Util_Potable", _Build_Perf_Target_Water_NonPotable) 
+	report("Util_Nonpotable", _Build_Perf_Target_Gas) 
+	# Production
+	report("Waste_Solid", _Build_Perf_Target_Waste_Solid) 
+	report("Waste_Black_Water", _Build_Perf_Target_Waste_Black_Water) 
+	report("Waste_Gray_Water", _Build_Perf_Target_Waste_Gray_Water) 
+	report("Waste_Recyclable", _Build_Perf_Target_Waste_Recyclable) 
+
+	NIL
+
+
+
+/*
+# This version is before renaming to Eric's version.
+ReportUsages(grossFloorArea, sign) --> 
+	set(_grossFloorArea, grossFloorArea)
+
+	# FOR SINGLE BUILDING OR PARCEL - NOT SUMMABLE. 
+	# Only meaningful when applied to one shape at a time.
+	# Uses percentages. Adds to one hundred for each building.
+	report("Use_Residential", Use_Residential)
+	report("Use_Hotel", Use_Hotel)
+	report("Use_Office", Use_Office)
+	report("Use_Commercial", Use_Commercial)
+	report("Use_Sky_Garden", Use_Sky_Garden)
+	report("Use_Utility", Use_Utility)
+	report("Use_Misc", Use_Misc)
+	report("Use_Parking", Use_Parking)
+	report("Total_Use_Check", Use_Residential + Use_Hotel + Use_Office
+		+ Use_Commercial + Use_Sky_Garden + Use_Utility + Use_Misc + Use_Parking)
+
+	# FOR SUMMATION ACROSS BUILDINGS, PARCELS, or REGIONS.
+	# GFA per usage.
+	
+	report("Gross_Floor_Area", _grossFloorArea * sign)
+	report("GFA_Residential", _gfaResidential * sign)
+	report("GFA_Hotel", _gfaHotel * sign)
+	report("GFA_Office", _gfaOffice * sign)
+	report("GFA_Commercial", _gfaCommercial * sign)
+	report("GFA_Sky_Garden", _gfaSkyGarden * sign)
+	report("GFA_Utility", _gfaUtility * sign)
+	report("GFA_Misc", _gfaMisc * sign)
+	report("GFA_Parking", _gfaParking * sign)
+
+	# Cars per usage.
+	report("Cars_Residential", carsRequired("Residential", _gfaResidential) * sign)
+	report("Cars_Hotel", carsRequired("Hotel", _gfaHotel) * sign)
+	report("Cars_Office", carsRequired("Office", _gfaOffice) * sign)
+	report("Cars_Commercial", carsRequired("Commercial", _gfaCommercial) * sign)
+	report("Cars_Sky_Garden", carsRequired("Sky_Garden", _gfaSkyGarden) * sign)
+	report("Cars_Utility", carsRequired("SkyGarden", _gfaSkyGarden) * sign)
+	report("Cars_Misc", carsRequired("Misc", _gfaMisc) * sign)
+	report("Cars_Parking", carsRequired("Parking", _gfaParking) * sign)
+
+	report("Total_Car_Demand", 
+		(carsRequired("Residential", _gfaResidential) +
+		carsRequired("Hotel", _gfaHotel) +
+		carsRequired("Office", _gfaOffice) +
+		carsRequired("Commercial", _gfaCommercial) +
+		carsRequired("Sky_Garden", _gfaSkyGarden) +
+		carsRequired("Utility", _gfaUtility) +
+		carsRequired("Misc", _gfaMisc)) * sign)
+
+	report("Total_Car_Supply", carsRequired("Parking", _gfaParking) * sign) 
+	
+	report("Net_Car_Balance",  
+		(carsRequired("Residential", _gfaResidential) +
+		carsRequired("Hotel", _gfaHotel) +
+		carsRequired("Office", _gfaOffice) +
+		carsRequired("Commercial", _gfaCommercial) +
+		carsRequired("Sky_Garden", _gfaSkyGarden) +
+		carsRequired("SkyUtility", _gfaUtility) +
+		carsRequired("Misc", _gfaMisc) +
+		carsRequired("Parking", _gfaParking)) * sign)
+
+	
+	# Unit counts and populations.
+	report("Dwelling_Unit_Count", dwellingUnitCount(_gfaResidential) * sign) # XX reevaluate this naming convention
+	report("Hotel_Room_Count", hotelRoomCount(_gfaHotel) * sign)
+	# Expand unit reporting later.
+
+	# One time building 
+	report("Construction_Building_Cost", constructionBuildingCost(_grossFloorArea)) 
+	report("Construction_Waste", constructionWaste(_grossFloorArea))
+
+	# TARGETS
+	# Consumption 
+	report("Build_Perf_Target_Electric", _Build_Perf_Target_Electric) 
+	report("Build_Perf_Target_Water_Potable", _Build_Perf_Target_Water_Potable) 
+	report("Build_Perf_Target_Water_NonPotable", _Build_Perf_Target_Water_NonPotable) 
+	report("Build_Perf_Target_Gas", _Build_Perf_Target_Gas) 
+	# Production
+	report("Build_Perf_Target_Waste_Solid", _Build_Perf_Target_Waste_Solid) 
+	report("Build_Perf_Target_Waste_Black_Water", _Build_Perf_Target_Waste_Black_Water) 
+	report("Build_Perf_Target_Waste_Gray_Water", _Build_Perf_Target_Waste_Gray_Water) 
+	report("Build_Perf_Target_Waste_Recyclable", _Build_Perf_Target_Waste_Recyclable) 
+	
+	# BASELINES
+	# Consumption 
+	report("Build_Perf_Base_Electric", _Build_Perf_Base_Electric) 
+	report("Build_Perf_Base_Water_Potable", _Build_Perf_Base_Water_Potable) 
+	report("Build_Perf_Base_Water_NonPotable", _Build_Perf_Base_Water_NonPotable) 
+	report("Build_Perf_Base_Gas", _Build_Perf_Base_Gas) 
+	# Production
+	report("Build_Perf_Base_Waste_Solid", _Build_Perf_Base_Waste_Solid) 
+	report("Build_Perf_Base_Waste_Black_Water", _Build_Perf_Base_Waste_Black_Water) 
+	report("Build_Perf_Base_Waste_Gray_Water", _Build_Perf_Base_Waste_Gray_Water) 
+	report("Build_Perf_Base_Waste_Recyclable", _Build_Perf_Base_Waste_Recyclable) 
+
+	NIL
+*/
+	
+const Construction_Waste_Avg = 15 # kg/m2
+constructionBuildingCost(buildingTotalGFA) = buildingTotalGFA * Cost_Per_M2
+constructionWaste(buildingTotalGFA) = buildingTotalGFA * Construction_Waste_Avg * (100 - Reduction_Construction_Waste) / 100 
+
+_Build_Perf_Base_Electric =
+	_gfaResidential * getUsageData_Electric("Residential") +
+	_gfaHotel * getUsageData_Electric("Hotel") +
+	_gfaOffice * getUsageData_Electric("Office") +
+	_gfaCommercial * getUsageData_Electric("Commercial") +
+	_gfaSkyGarden * getUsageData_Electric("Sky_Garden") +
+	_gfaUtility * getUsageData_Electric("Utility") +
+	_gfaMisc * getUsageData_Electric("Misc") +
+	_gfaParking * getUsageData_Electric("Parking")
+_Build_Perf_Target_Electric = 
+	_Build_Perf_Base_Electric * (100 - Reduction_Electric) / 100
+
+_Build_Perf_Base_Water_Potable =
+	_gfaResidential * getUsageData_Water_Potable("Residential") +
+	_gfaHotel * getUsageData_Water_Potable("Hotel") +
+	_gfaOffice * getUsageData_Water_Potable("Office") +
+	_gfaCommercial * getUsageData_Water_Potable("Commercial") +
+	_gfaSkyGarden * getUsageData_Water_Potable("Sky_Garden") +
+	_gfaUtility * getUsageData_Water_Potable("Utility") +
+	_gfaMisc * getUsageData_Water_Potable("Misc") +
+	_gfaParking * getUsageData_Water_Potable("Parking")
+_Build_Perf_Target_Water_Potable = 
+	_Build_Perf_Base_Water_Potable * (100 - Reduction_WaterPotable) / 100
+
+_Build_Perf_Base_Water_NonPotable =
+	_gfaResidential * getUsageData_Water_NonPotable("Residential") +
+	_gfaHotel * getUsageData_Water_NonPotable("Hotel") +
+	_gfaOffice * getUsageData_Water_NonPotable("Office") +
+	_gfaCommercial * getUsageData_Water_NonPotable("Commercial") +
+	_gfaSkyGarden * getUsageData_Water_NonPotable("Sky_Garden") +
+	_gfaUtility * getUsageData_Water_NonPotable("Utility") +
+	_gfaMisc * getUsageData_Water_NonPotable("Misc") +
+	_gfaParking * getUsageData_Water_NonPotable("Parking")
+_Build_Perf_Target_Water_NonPotable = 
+	_Build_Perf_Base_Water_NonPotable * (100 - Reduction_WaterNonPotable) / 100
+
+_Build_Perf_Base_Gas =
+	_gfaResidential * getUsageData_Gas("Residential") +
+	_gfaHotel * getUsageData_Gas("Hotel") +
+	_gfaOffice * getUsageData_Gas("Office") +
+	_gfaCommercial * getUsageData_Gas("Commercial") +
+	_gfaSkyGarden * getUsageData_Gas("Sky_Garden") +
+	_gfaUtility * getUsageData_Gas("Utility") +
+	_gfaMisc * getUsageData_Gas("Misc") +
+	_gfaParking * getUsageData_Gas("Parking")
+_Build_Perf_Target_Gas = 
+	_Build_Perf_Base_Gas * (100 - Reduction_Gas) / 100
+
+_Build_Perf_Base_Waste_Solid =
+	_gfaResidential * getUsageData_Waste_Solid("Residential") +
+	_gfaHotel * getUsageData_Waste_Solid("Hotel") +
+	_gfaOffice * getUsageData_Waste_Solid("Office") +
+	_gfaCommercial * getUsageData_Waste_Solid("Commercial") +
+	_gfaSkyGarden * getUsageData_Waste_Solid("Sky_Garden") +
+	_gfaUtility * getUsageData_Waste_Solid("Utility") +
+	_gfaMisc * getUsageData_Waste_Solid("Misc") +
+	_gfaParking * getUsageData_Waste_Solid("Parking")
+_Build_Perf_Target_Waste_Solid = 
+	_Build_Perf_Base_Waste_Solid * (100 - Reduction_Waste_Solid) / 100
+
+_Build_Perf_Base_Waste_Black_Water =
+	_gfaResidential * getUsageData_Waste_Black_Water("Residential") +
+	_gfaHotel * getUsageData_Waste_Black_Water("Hotel") +
+	_gfaOffice * getUsageData_Waste_Black_Water("Office") +
+	_gfaCommercial * getUsageData_Waste_Black_Water("Commercial") +
+	_gfaSkyGarden * getUsageData_Waste_Black_Water("Sky_Garden") +
+	_gfaUtility * getUsageData_Waste_Black_Water("Utility") +
+	_gfaMisc * getUsageData_Waste_Black_Water("Misc") +
+	_gfaParking * getUsageData_Waste_Black_Water("Parking")
+_Build_Perf_Target_Waste_Black_Water = 
+	_Build_Perf_Base_Waste_Black_Water * (100 - Reduction_Waste_Black_Water) / 100
+
+_Build_Perf_Base_Waste_Gray_Water =
+	_gfaResidential * getUsageData_Waste_Gray_Water("Residential") +
+	_gfaHotel * getUsageData_Waste_Gray_Water("Hotel") +
+	_gfaOffice * getUsageData_Waste_Gray_Water("Office") +
+	_gfaCommercial * getUsageData_Waste_Gray_Water("Commercial") +
+	_gfaSkyGarden * getUsageData_Waste_Gray_Water("Sky_Garden") +
+	_gfaUtility * getUsageData_Waste_Gray_Water("Utility") +
+	_gfaMisc * getUsageData_Waste_Gray_Water("Misc") +
+	_gfaParking * getUsageData_Waste_Gray_Water("Parking")
+_Build_Perf_Target_Waste_Gray_Water = 
+	_Build_Perf_Base_Waste_Gray_Water * (100 - Reduction_Waste_Gray_Water) / 100
+
+
+_Build_Perf_Base_Waste_Recyclable =
+	_gfaResidential * getUsageData_Waste_Recyclable("Residential") +
+	_gfaHotel * getUsageData_Waste_Recyclable("Hotel") +
+	_gfaOffice * getUsageData_Waste_Recyclable("Office") +
+	_gfaCommercial * getUsageData_Waste_Recyclable("Commercial") +
+	_gfaSkyGarden * getUsageData_Waste_Recyclable("Sky_Garden") +
+	_gfaUtility * getUsageData_Waste_Recyclable("Utility") +
+	_gfaMisc * getUsageData_Waste_Recyclable("Misc") +
+	_gfaParking * getUsageData_Waste_Recyclable("Parking")
+_Build_Perf_Target_Waste_Recyclable = 
+	_Build_Perf_Base_Waste_Recyclable * (100 - Reduction_Waste_Recyclable) / 100
+
+
+
+######################################
+
+const BarWidth = 40 
+const BarDepth = 10
+
+BarChart(grossFloorArea) -->
+	# Uses hidden GFA since import bug stopped it from coming in through the import. 
+	set(_grossFloorArea, grossFloorArea)
+	alignScopeToAxes()
+	translate(rel, world, 0, chartHeight, 0)
+	i("builtin:cube")
+	texture("")
+	s(BarWidth,0,BarDepth)
+	center(xz)
+	comp(f) {
+		top: BarChartStep2
+	}
+	
+const chartHeight = 30
+
+BarChartStep2 -->
+	alignScopeToAxes(y)
+	r(0, Bar_Chart_Rotation, 0)
+	center(xz)
+	extrude(1)
+	comp(f) {
+		top: 
+			t(0,0,-1)
+			BarChartStep3 
+	}	
+	
+BarChartStep3 -->	
+	ShowUse(1, 0)
+
+ShowUse(index, total) -->
+	case index > UseCountAll:
+		case total > 100:
+			set(material.opacity, 1)
+			FlagError("Usage Total is over 100%.")
+			X.
+		case total < 100:
+			set(material.opacity, 1)
+			FlagError("Usage Total is under 100%.")
+			X.
+		else:
+			X.
+	case cycleUsePercent(index) > 0:
+		case total >= 100:
+			color(getUsageData_Color_Hex(cycleUseName(index)))
+			set(material.opacity, 0.3)
+			ShowUsageText(index)
+			extrude(cycleUsePercent(index))
+			comp(f) {
+				top: ShowUse(index + 1, total + cycleUsePercent(index)) | 
+				all: X.	
+			}
+		case total + cycleUsePercent(index) > 100:
+			color(getUsageData_Color_Hex(cycleUseName(index)))
+			ShowUsageText(index)
+			extrude(100 - total)
+			comp(f) {
+				top: 
+					set(material.opacity, 0.3)
+					extrude(cycleUsePercent(index) - (100 - total))
+					comp(f) {
+						top: ShowUse(index + 1, total + cycleUsePercent(index)) | 
+						all: X.	
+					} | 
+				all: X.
+			}
+		else:		
+			color(getUsageData_Color_Hex(cycleUseName(index)))
+			ShowUsageText(index)
+			extrude(cycleUsePercent(index))
+			comp(f) {
+				top: ShowUse(index + 1, total + cycleUsePercent(index)) | 
+				back: Backdrop X. |
+				all: X.	
+			}
+	else:
+		ShowUse(index + 1, total + cycleUsePercent(index))
+
+const UseCountAll = 8
+
+Backdrop --> 
+	#reverseNormals
+	t(-BarWidth, 0, 0)
+	rotateScope(0,0,180)
+	s(BackdropWidth, '1,'1) 
+	BackdropStep2
+
+BackdropStep2 -->
+	offset(-BackdropOutline)
+	comp(f) {
+		inside: color(0,0,0) X.|
+		border: X.	
+	}
+
+const BackdropOutline = 1
+const BackdropWidth = 140
+const LetterSpacing = 40
+
+ShowUsageText(index) -->
+#	t(50, cycleUsePercent(index) * 0.5 - 5, 0)
+#	i("builtin:cube")
+#	X.	
+#dShowUsageText(index) -->
+	#t(50, cycleUsePercent(index) * 0.5 - 5, 0)
+	#X1
+	alignScopeToAxes(y)
+	t(50, cycleUsePercent(index) * 0.5 - 5, 0)
+	set(TEXT.Text, (cycleUsePercent(index) + "% " + cycleUseName(index)))
+	set(TEXT.Font_Height, 10)
+	set(TEXT.Elevation, 0)#cycleUsePercent(index) / 2)
+	set(TEXT.Font_Depth, 5)
+	#set(TEXT.White_Underlay, true)
+	set(TEXT.White_Underlay, false)
+	#set(TEXT.Tilt, 20)
+	#set(TEXT.Color, getUsageData_Color_Hex(cycleUseName(index)))
+	set(TEXT.Color, "#FFFFFF")
+	TEXT.Generate
+	
+X1 -->
+	extrude(10)
+
+
+# XX not in excel
+cycleUsePercent(index) = 
+	case index == 1: Use_Residential
+	case index == 2: Use_Hotel
+	case index == 3: Use_Office
+	case index == 4: Use_Commercial
+	case index == 5: Use_Sky_Garden
+	case index == 6: Use_Utility
+	case index == 7: Use_Misc
+	case index == 8: Use_Parking
+	else: 0
+
+# XX not in excel
+cycleUseName(index) = 
+	case index == 1: "Residential"
+	case index == 2: "Hotel"
+	case index == 3: "Office"
+	case index == 4: "Commercial"
+	case index == 5: "Sky_Garden"
+	case index == 6: "Utility"
+	case index == 7: "Misc"
+	case index == 8: "Parking"
+	else: ""
+
+
+
+################################
+# Car parking requirements
+
+carsRequired(usage, usageGFA) = 
+	case usage == "Residential": dwellingUnitCount(usageGFA) * getUsageData_Car_Per_Unit("Residential")
+	case usage == "Hotel": usageGFA / getUsageData_Area_Per_Car("Hotel")
+	case usage == "Office": usageGFA / getUsageData_Area_Per_Car("Office")
+	case usage == "Commercial": usageGFA / getUsageData_Area_Per_Car("Commercial")
+	case usage == "Parking": usageGFA / (-1 * getUsageData_Area_Per_Car("Parking")) 
+	case usage == "Sky_Garden": 0
+	case usage == "Utility": 0
+	case usage == "Misc": 0
+	else: 0
+
+dwellingUnitCount(gfaResidential) = gfaResidential / getUsageData_Average_Unit_Size("Residential")
+hotelRoomCount(gfaHotel) = gfaHotel / getUsageData_Average_Unit_Size("Hotel")
+
+# XX Note: would car use not be attached to count of hotel rooms, like residential?
+# This current method says that the lower the hotel price, the more likely a car is in use. Is that right?
+# I guess it might be actually.
+
+ 
+
+####################################################
+
+# This function provides all data from Usage table, for each usage.
+# Individual fields are accessed by index in getUsageData_ functions.
+
+getUsageData(usage) =
+    case usage == "Residential": "Dwelling Units;2.5;90;17;8;0.02;1.2;0;1;5;3.25;5;#FFFF00;"
+    case usage == "Hotel": "Hotel Rooms;1.2;35;17;8;5;1.2;250;0;5;3.25;5;#FE5E00;"
+    case usage == "Office": "Workspaces;1;10;8;17;5;1.2;450;0;5;3.25;5;#0000FF;"
+    case usage == "Commercial": "Workspaces;1;10;8;17;15;1.3;400;0;5;3.25;5;#FF0000;"
+    case usage == "Parking": "Parking Lots;0;40;0;23;0.125;1.1;-40;0;5;3.25;5;#00FFFF;"
+    case usage == "Sky_Garden": "n/a;0;0;0;23;5;1.1;0;0;5;3.25;5;#00FF00;"
+    case usage == "Utility": "n/a;0;0;0;23;0.0416666666666667;1.1;1;0;5;3.25;5;#FF00FF;"
+    case usage == "Misc": "n/a;0;0;0;23;0;1.1;0;0;5;3.25;5;#FFFFFF;"
+    else: ""
+
+
+#Note: Remember to fix strings below by removing float( ) function once in CGA file.
+
+getUsageData_Unit_Name(usage) = listItem(getUsageData(usage),0)
+getUsageData_People_Per_Unit(usage) = float(listItem(getUsageData(usage),1))
+getUsageData_Average_Unit_Size(usage) = float(listItem(getUsageData(usage),2))
+getUsageData_Use_Time_Start(usage) = float(listItem(getUsageData(usage),3))
+getUsageData_Use_Time_End(usage) = float(listItem(getUsageData(usage),4))
+getUsageData_Visitors_Per_Hour(usage) = float(listItem(getUsageData(usage),5))
+getUsageData_Massing_Efficiency(usage) = float(listItem(getUsageData(usage),6))
+getUsageData_Area_Per_Car(usage) = float(listItem(getUsageData(usage),7))
+getUsageData_Car_Per_Unit(usage) = float(listItem(getUsageData(usage),8))
+#getUsageData_Story_Height_First(usage) = float(listItem(getUsageData(usage),9))
+#getUsageData_Story_Height_Other(usage) = float(listItem(getUsageData(usage),10))
+#getUsageData_Story_Height_Last(usage) = float(listItem(getUsageData(usage),11))
+getUsageData_Color_Hex(usage) = listItem(getUsageData(usage),12)
+
+# XX These are using false values, and not including variations per usage. Must fix. 
+getUsageData_Electric(usage) = 800 #kWh/m2/year			 #XXXXXXXXXX!!!!!!!!!!
+getUsageData_Water_Potable(usage) = 5000 #L/m2 /year
+getUsageData_Water_NonPotable(usage) = 600 #L/m2 /year
+getUsageData_Gas(usage) = 300 #XX What measurement/m2 /year
+getUsageData_Waste_Solid(usage) = 60 #kg/m2/year		
+getUsageData_Waste_Black_Water(usage) = 3000 #L/m2/year		
+getUsageData_Waste_Gray_Water(usage) = 2600 #L/m2/year		
+getUsageData_Waste_Recyclable(usage) = 40 #kg/m2/year		
+
+
+
+
+#######################################################
+#######################################################
+#######################################################
+#######################################################
+#######################################################
+# FROM EXCEL 
+
+getZoningData(zone) = 
+    case zone =="BUSINESS INDUSTRY": "2.8;0.5;36;6;6;6;15;7.5;5;5;5;5;5;3;3;3;3;3;4.5;213;173;199;#D5ADC7;Business Industry;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="BUSINESS PARK - WHITE": "2.8;1;36;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;0;122;160;#007AA0;Business Park, White Site;0;0;60;20;20;0;0;0;UTILITY;"
+    case zone =="CEMETERY": "1;0.1;0;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;158;137;0;#9E8900;Cemetery;0;0;0;0;0;0;0;100;WHITESITE;"
+    case zone =="CIVIC & COMMUNITY INSTITUTION": "1.4;0.8;4;5;5;5;15;7.5;5;5;5;5;5;3;3;3;3;3;3;204;0;33;#CC0021;Civic & Community Institution;0;0;0;0;0;0;0;100;OFFICE_CIVIC;"
+    case zone =="COMMERCIAL": "2.8;0.8;36;5;5;5;15;7.5;5;5;5;5;5;3;3;3;3;3;3;33;81;153;#215199;Commercial;0;0;0;100;0;0;0;0;COMMERCIAL;"
+    case zone =="COMMERCIAL & RESIDENTIAL": "2.8;0.4;36;5;5;5;15;7.5;5;5;5;5;5;3;3;3;3;3;3;53;173;229;#35ADE5;Commercial & Residential;60;0;0;40;0;0;0;0;COMMERCIAL;"
+    case zone =="EDUCATIONAL INSTITUTION": "1.4;0.8;4;5;5;5;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3;242;242;193;#F2F2C1;Educational Institution;0;0;0;0;0;0;0;100;OFFICE_CIVIC;"
+    case zone =="HEALTH & MEDICAL CARE": "1.4;0.8;4;5;5;5;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3;204;0;33;#CC0021;Health & Medical Care;0;0;0;0;0;0;0;100;OFFICE_CIVIC;"
+    case zone =="LIGHT RAPID TRANSIT": "1;0;0;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;255;255;255;#FFFFFF;Light Rapid Transit;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="MASS RAPID TRANSIT": "1;0;0;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;255;255;255;#FFFFFF;Mass Rapid Transit;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="OPEN SPACE": "1;0;0;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;170;178;0;#AAB200;Open Space;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="PARK": "1;0;0;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;0;163;58;#00A33A;Park;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="PARKING - MCSP": "1.6;0.8;5;5;5;5;15;7.5;5;5;5;5;5;3;3;3;3;3;4.5;255;255;255;#FFFFFF;Parking - MSCP;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="PLACE OF WORSHIP": "1.6;0.8;5;5;5;5;15;7.5;5;5;5;5;5;3;3;3;3;3;3;204;0;33;#CC0021;Place of worship;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="PORT / AIRPORT": "1.6;0.8;5;5;5;5;15;7.5;5;5;5;5;5;3;3;3;3;3;3;209;209;209;#D1D1D1;Port or Airport;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="LANDED HOUSING": "1;0.5;5;4.5;3.6;3.6;3;3;3;3;3;3;0;0;0;0;0;0;3;244;186;130;#F4BA82;Landed Housing;100;0;0;0;0;0;0;0;RESIDENTIAL;"
+    case zone =="RESIDENTIAL, LOW": "1.4;0.4;5;5;3.6;3.6;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3.6;244;186;130;#F4BA82;Residential;100;0;0;0;0;0;0;0;RESIDENTIAL;"
+    case zone =="RESIDENTIAL, MEDIUM": "1.6;0.4;12;5;3.6;5;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3.6;244;186;130;#F4BA82;Residential;100;0;0;0;0;0;0;0;RESIDENTIAL;"
+    case zone =="RESIDENTIAL, MEDIUM HIGH": "2.1;0.4;24;5;3.6;5;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3.6;244;186;130;#F4BA82;Residential;100;0;0;0;0;0;0;0;RESIDENTIAL;"
+    case zone =="RESIDENTIAL, HIGH": "2.8;0.5;36;5;3.6;5;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3.6;244;186;130;#F4BA82;Residential;100;0;0;0;0;0;0;0;RESIDENTIAL;"
+    case zone =="RESIDENTIAL, VERY HIGH": "5;0.6;50;5;3.6;5;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3.6;244;186;130;#F4BA82;Residential;100;0;0;0;0;0;0;0;RESIDENTIAL;"
+    case zone =="RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, LOW": "1.4;0.4;5;5;3.6;3.6;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3.6;232;130;132;#E88284;Residential with Commerical at 1st Story;95;0;0;5;0;0;0;0;RESIDENTIAL_W_1COM;"
+    case zone =="RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, MEDIUM": "1.6;0.4;12;5;3.6;5;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3.6;232;130;132;#E88284;Residential with Commerical at 1st Story;95;0;0;5;0;0;0;0;RESIDENTIAL_W_1COM;"
+    case zone =="RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, MEDIUM HIGH": "2.1;0.4;24;5;3.6;5;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3.6;232;130;132;#E88284;Residential with Commerical at 1st Story;95;0;0;5;0;0;0;0;RESIDENTIAL_W_1COM;"
+    case zone =="RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, HIGH": "2.8;0.5;36;5;3.6;5;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3.6;232;130;132;#E88284;Residential with Commerical at 1st Story;95;0;0;5;0;0;0;0;RESIDENTIAL_W_1COM;"
+    case zone =="RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, VERY HIGH": "5;0.6;50;5;3.6;5;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3.6;232;130;132;#E88284;Residential with Commerical at 1st Story;95;0;0;5;0;0;0;0;RESIDENTIAL_W_1COM;"
+    case zone =="HOTEL": "5;1;50;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;165;158;198;#A59EC6;Hotel;0;100;0;0;0;0;0;0;OFFICE;"
+    case zone =="ROAD": "1;;0;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;255;255;255;#FFFFFF;Road;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="SPECIAL USE": "5;1;50;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;79;102;2;#4F6602;Special Use;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="SPORTS & RECREATION": "1;0.5;0;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;163;211;155;#A3D39B;Sports and Recreation;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="TRANSPORT FACILITIES": "1;0.5;1;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;147;153;155;#93999B;Transportation Facility;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="UTILITY": "1;0.5;1;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;147;153;155;#93999B;Utility;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="WHITE": "5;1;50;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;245;242;242;#F5F2F2;White Site;20;20;20;20;20;0;0;0;COMMERCIAL;"
+    # XX Added to match GIS - Not in Excel!
+    case zone =="WATERBODY": "5;1;50;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;245;242;242;#0099FF;Water Body;20;20;20;20;20;0;0;0;UTILITY;"
+    else: ""
+
+
+
+getZoningData_GPR(zone) = float(listItem(getZoningData(zone),0))					#
+getZoningData_Coverage(zone) = float(listItem(getZoningData(zone),1))				#
+getZoningData_MaxStories(zone) = float(listItem(getZoningData(zone),2))				#
+getZoningData_FirstFloor(zone) = float(listItem(getZoningData(zone),3))
+getZoningData_OtherFloor(zone) = float(listItem(getZoningData(zone),4))
+getZoningData_TopFloor(zone) = float(listItem(getZoningData(zone),5))
+getZoningData_SBCat1(zone) = float(listItem(getZoningData(zone),6))					#
+getZoningData_SBCat2(zone) = float(listItem(getZoningData(zone),7))					#
+getZoningData_SBCat3(zone) = float(listItem(getZoningData(zone),8))					#
+getZoningData_SBCat4(zone) = float(listItem(getZoningData(zone),9))					#
+getZoningData_SBCat5(zone) = float(listItem(getZoningData(zone),10))				#
+getZoningData_SBCatN(zone) = float(listItem(getZoningData(zone),11))				#
+getZoningData_GBCat1(zone) = float(listItem(getZoningData(zone),12))				#
+getZoningData_GBCat2(zone) = float(listItem(getZoningData(zone),13))				#
+getZoningData_GBCat3(zone) = float(listItem(getZoningData(zone),14))				#
+getZoningData_GBCat4(zone) = float(listItem(getZoningData(zone),15))				#
+getZoningData_GBCat5(zone) = float(listItem(getZoningData(zone),16))				#
+getZoningData_GBCatN(zone) = float(listItem(getZoningData(zone),17))				#
+getZoningData_CommonBoundaryBuffer(zone) = float(listItem(getZoningData(zone),18))	#
+getZoningData_Color_R(zone) = float(listItem(getZoningData(zone),19))
+getZoningData_Color_G(zone) = float(listItem(getZoningData(zone),20))
+getZoningData_Color_B(zone) = float(listItem(getZoningData(zone),21))
+getZoningData_Color_Hex(zone) = listItem(getZoningData(zone),22)					#
+getZoningData_Friendly_Name(zone) = listItem(getZoningData(zone),23)
+getZoningData_Use_Residential(zone) = float(listItem(getZoningData(zone),24))		#
+getZoningData_Use_Hotel(zone) = float(listItem(getZoningData(zone),25))				#
+getZoningData_Use_Office(zone) = float(listItem(getZoningData(zone),26))			#
+getZoningData_Use_Commercial(zone) = float(listItem(getZoningData(zone),27))		#
+getZoningData_Use_Parking(zone) = float(listItem(getZoningData(zone),28))			#
+getZoningData_Use_Sky_Garden(zone) = float(listItem(getZoningData(zone),29))		#
+getZoningData_Use_Utility(zone) = float(listItem(getZoningData(zone),30))			#
+getZoningData_Use_Misc(zone) = float(listItem(getZoningData(zone),31))				#
+getZoningData_Texture_Folder(zone) = listItem(getZoningData(zone),32)
+
+# Not in Excel:
+getZoningData_SBCat_Any(zone, roadCategory) = 
+	case roadCategory == "Common": 3
+	case roadCategory == "Cat1": getZoningData_SBCat1(zone)
+	case roadCategory == "Cat2": getZoningData_SBCat2(zone)
+	case roadCategory == "Cat3": getZoningData_SBCat3(zone)
+	case roadCategory == "Cat4": getZoningData_SBCat4(zone)
+	case roadCategory == "Cat5": getZoningData_SBCat5(zone)
+	case roadCategory == "CatN": getZoningData_SBCatN(zone)
+	else: getZoningData_SBCat5(zone)
+
+getZoningData_GBCat_Any(zone, roadCategory) = 
+	case roadCategory == "Common": 3
+	case roadCategory == "Cat1": getZoningData_GBCat1(zone)
+	case roadCategory == "Cat2": getZoningData_GBCat2(zone)
+	case roadCategory == "Cat3": getZoningData_GBCat3(zone)
+	case roadCategory == "Cat4": getZoningData_GBCat4(zone)
+	case roadCategory == "Cat5": getZoningData_GBCat5(zone)
+	case roadCategory == "CatN": getZoningData_GBCatN(zone)
+	else: getZoningData_GBCat5(zone)
+
+
+###################################################
+###################################################
+###################################################
+# TYPOLOGY
+
+# XX TEMP: "Residential", "Commercial", "Hotel", "Mixed-Use"
+
+getTypologyData_Use_Residential(typology) =
+	case typology == "Residential": 100
+	case typology == "Commercial": 0
+	case typology == "Hotel": 0
+	case typology == "Mixed-Use": 40
+	case typology == "Parking": 0 
+	else: 0
+getTypologyData_Use_Hotel(typology) = 
+	case typology == "Residential": 0
+	case typology == "Commercial": 0
+	case typology == "Hotel": 95
+	case typology == "Mixed-Use": 30
+	case typology == "Parking": 0
+	else: 0
+getTypologyData_Use_Office(typology) = 0 
+getTypologyData_Use_Commercial(typology) = 
+	case typology == "Residential": 0
+	case typology == "Commercial": 100
+	case typology == "Hotel": 5
+	case typology == "Mixed-Use": 20
+	case typology == "Parking": 0
+	else: 0
+getTypologyData_Use_Parking(typology) = 
+	case typology == "Residential": 0
+	case typology == "Commercial": 0
+	case typology == "Hotel": 0
+	case typology == "Mixed-Use": 10
+	case typology == "Parking": 100
+	else: 0
+getTypologyData_Use_Sky_Garden(typology) = 0 
+getTypologyData_Use_Utility(typology) = 0
+getTypologyData_Use_Misc(typology) = 
+	case typology == "Misc": 100
+	else: 0
+
+
+getDefaultTypologyPerZone(zone) = 
+    case zone == "BUSINESS INDUSTRY": "Commercial"
+    case zone == "BUSINESS PARK - WHITE": "Commercial"
+    case zone == "CEMETERY": "Misc"
+    case zone == "CIVIC & COMMUNITY INSTITUTION": "Misc"
+    case zone == "COMMERCIAL": "Commercial"
+    case zone == "COMMERCIAL & RESIDENTIAL": "Commercial"
+    case zone == "EDUCATIONAL INSTITUTION": "Misc"
+    case zone == "HEALTH & MEDICAL CARE": "Misc"
+    case zone == "LIGHT RAPID TRANSIT": "Misc"
+    case zone == "MASS RAPID TRANSIT": "Misc"
+    case zone == "OPEN SPACE": "Misc"
+    case zone == "PARK": "Misc"
+    case zone == "PARKING - MCSP": "Parking"
+    case zone == "PLACE OF WORSHIP": "Misc"
+    case zone == "PORT / AIRPORT": "Misc"
+    case zone == "LANDED HOUSING": "Residential"
+    case zone == "RESIDENTIAL": "Residential"
+    case zone == "RESIDENTIAL, LOW": "Residential"
+    case zone == "RESIDENTIAL, MEDIUM": "Residential"
+    case zone == "RESIDENTIAL, MEDIUM HIGH": "Residential"
+    case zone == "RESIDENTIAL, HIGH": "Residential"
+    case zone == "RESIDENTIAL, VERY HIGH": "Residential"
+    case zone == "RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY": "Residential"
+    case zone == "RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, LOW": "Residential"
+    case zone == "RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, MEDIUM": "Residential"
+    case zone == "RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, MEDIUM HIGH": "Residential"
+    case zone == "RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, HIGH": "Residential"
+    case zone == "RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, VERY HIGH": "Residential"
+    case zone == "HOTEL": "Hotel"
+    case zone == "ROAD": "Misc"
+    case zone == "SPECIAL USE": "Misc"
+    case zone == "SPORTS & RECREATION": "Misc"
+    case zone == "TRANSPORT FACILITIES": "Misc"
+    case zone == "UTILITY": "Misc"
+    case zone == "WHITE": "Commercial"
+	else: "Misc"
+
+
+
+
+#################################################
+
+
+
+/*
+#### OLD CODE THAT MIGHT STILL HAVE SOME USE:
+
+dwellingUnitSize(usage) = 
+	case usage == "Residential, Core": 100
+	case usage == "Residential, Mid": 80
+	case usage == "Residential, Outer": 90 
+	else: -1
+
+dwellingUnitCount(usage, usageGFA) = 
+	case usage == "Residential, Core": usageGFA / dwellingUnitSize(usage)
+	case usage == "Residential, Mid": usageGFA / dwellingUnitSize(usage)
+	case usage == "Residential, Outer": usageGFA / dwellingUnitSize(usage)
+	else: 0
+
+
+const Total_Dwelling_Unit_Count = 
+	Dwelling_Unit_Count_Core + 
+	Dwelling_Unit_Count_Mid + 
+	Dwelling_Unit_Count_Outer 
+
+const Dwelling_Unit_Count_Core = GFA_Residential_Core / Dwelling_Unit_Size_Core
+const Dwelling_Unit_Count_Mid = GFA_Residential_Mid / Dwelling_Unit_Size_Mid
+const Dwelling_Unit_Count_Outer = GFA_Residential_Outer / Dwelling_Unit_Size_Outer
+	
+const Dwelling_Unit_Size_Core = 100 
+const Dwelling_Unit_Size_Mid = 80
+const Dwelling_Unit_Size_Outer = 90
+
+const Total_Hotel_Room_Count = 
+	Hotel_Room_Count_Upper + 
+	Hotel_Room_Count_Upper_Mid +
+	Hotel_Room_Count_Mid + 
+	Hotel_Room_Count_Budget
+	
+const Hotel_Room_Count_Upper = GFA_Hotel_Upper / Hotel_Room_Size_Upper 
+const Hotel_Room_Count_Upper_Mid = GFA_Hotel_Upper_Mid / Hotel_Room_Size_Upper_Mid 
+const Hotel_Room_Count_Mid = GFA_Hotel_Mid / Hotel_Room_Size_Mid 
+const Hotel_Room_Count_Budget = GFA_Hotel_Budget / Hotel_Room_Size_Budget 
+
+const Hotel_Room_Size_Upper = 95
+const Hotel_Room_Size_Upper_Mid = 50 
+const Hotel_Room_Size_Mid = 35
+const Hotel_Room_Size_Budget = 20 
+
+*/
+
+
+#####################################################
+#####################################################
+# ERROR FLAGS
+#####################################################
+#####################################################
+
+
+#XX Clean this up some.
+Pointer_Height = Box_Width
+Box_Height = Box_Width
+Box_Width = 20
+symbolColor(type) = case type == "Error": "#ff0000" else: "#fff600"
+symbolFile(type) = "assets/Flags/" + type + ".png"
+const Hide_Flags = false
+
+
+#FlagWarning(message) -->
+#	case Hide_Flags:
+#		print("Warning: " + message)
+#	else:
+#		print("Warning: " + message)
+#		Flag("Warning")
+	
+FlagError(message) -->
+	case Hide_Flags:
+		print("Error: " + message)
+	else: 
+		print("Error: " + message)
+		Flag("Error")
+	
+flagHeight = 40
+
+Flag(type) -->
+	alignScopeToAxes(y)
+	# Move start point up to elevation.
+	translate(rel, world, 0, flagHeight, 0)
+	# Give the symbol a color.
+	color(symbolColor(type))
+	# Make a box at the point, using built-in cube.
+	i("builtin:cube")
+	# Remove texture from built-in cube. 
+	texture("")
+	# Scale box to values in Inspector.
+	s(Box_Width,Box_Height,Box_Width)
+	# Center the box in the xz direction of the scope.
+	center(xz)
+	# Break into component geometries, and apply symbol texture and
+	comp(f) {top:NIL |
+		side: TextureWithSymbol(type) |
+		bottom: InsertBase }
+
+TextureWithSymbol(type) -->
+	color("#FFFFFF")
+	texture(symbolFile(type))
+
+InsertBase -->
+	# Make a pyramid with taper operation.
+	taper(Pointer_Height)
+	# Remove top of pyramid.
+	comp(f) {horizontal: NIL | all: X.}

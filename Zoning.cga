@@ -1,0 +1,256 @@
+/**
+ *
+ Authors:
+ Matthias Buehler, Esri R&D Center Zurich
+ Seiler & Seiler, http://seilerseiler.com
+ */
+ 
+version "2014.1"
+
+
+@Group("SETBACKS",1)
+attr frontSetback = 5
+@Group("SETBACKS")
+attr backSetback = 5
+@Group("SETBACKS")
+attr sideSetback = 5
+
+@Group("BUILDING VOLUME",2) @Order(1)
+attr maxHeight = 15
+@Group("BUILDING VOLUME") @Order(2)
+attr SkyPlaneAngle = 60
+@Group("BUILDING VOLUME") @Order(3)
+attr frontBaseHeight = 10
+@Group("BUILDING VOLUME") @Order(4)
+attr backBaseHeight = maxHeight+0.1
+@Group("BUILDING VOLUME") @Order(5)
+attr sideBaseHeight = maxHeight+0.1
+@Group("BUILDING VOLUME") @Order(6)
+
+@Group("OPTIONS") @Range ("skeleton", "transparent", "no horizontal faces", "none")
+attr zoningVisualization = "skeleton"
+@Group("OPTIONS") @Color
+attr Color = "#ffff00"
+@Group("OPTIONS")
+attr occlusionMargin = 0.2
+@Group("OPTIONS") @Hidden
+attr Opacity = 0.35
+@Group("OPTIONS") @Hidden
+attr Show_Shell = true
+@Group("OPTIONS")
+attr floorHeight = 3.7
+@Group("OPTIONS")
+attr skeletonThickness = 0.25
+
+
+@Hidden
+attr parcelArea = 0
+@Hidden
+attr footprintArea = 0
+
+
+@StartRule
+Lot -->
+	report ("parcelArea", geometry.area)
+	offset(occlusionMargin, inside)
+	LotOffset
+
+LotOffset -->
+	case !Show_Shell: NIL else:
+		set(parcelArea,geometry.area())
+		setback(frontSetback) { street.front: NIL | remainder: 
+			setback(backSetback) { street.back: NIL | remainder: 
+	 			setback(sideSetback) { street.side: NIL | remainder: 
+					Footprint 
+				}
+			}
+		}
+  
+Footprint -->
+	set(footprintArea,geometry.area())
+	envelope(maxHeight, frontBaseHeight, SkyPlaneAngle, backBaseHeight, SkyPlaneAngle, sideBaseHeight, SkyPlaneAngle)
+ 	BuildingVolume
+
+
+BuildingVolume -->
+	case zoningVisualization == "transparent":
+ 		color(Color)
+ 		set(material.opacity,Opacity)
+	case zoningVisualization == "skeleton":
+ 		color(Color)
+ 		comp(f) {all : NIL}
+ 		comp(e) {all : s('1,skeletonThickness,skeletonThickness) center(yz) primitiveCube() Skeleton. }
+ 	case zoningVisualization == "no horizontal faces":
+ 		color(Color)
+ 		set(material.opacity,Opacity)
+ 		comp(f) {horizontal : NIL | all : NoHorizontalFaces.}
+	else :
+ 		color(Color)
+ 		set(material.opacity,Opacity)
+ 		comp(f) {all : NIL}
+
+ 	report("Parcel Area (m2)",parcelArea)
+ 	report("Max Footprint Area (m2)",footprintArea)
+ 	report("potential GFA",geometry.volume/floorHeight)
+ 	report("potential FAR",geometry.volume/floorHeight/parcelArea)
+ 	
+
+
+###############################
+# ZONING STYLES
+###############################
+
+####################
+### INDUSTRY
+#
+
+style Industry
+attr frontSetback = 2
+attr backSetback = 0.0
+attr sideSetback = 0.0
+
+attr frontBaseHeight = 1.0
+attr backBaseHeight = 1.0
+
+attr SkyPlaneAngle = 90
+attr maxHeight = 24.5
+
+attr floorHeight = 3.8
+@Color
+attr Color = "#7a85c8"
+
+
+
+
+
+
+
+style Educational
+attr frontSetback = 5
+attr backSetback = 2
+attr sideSetback = 2
+
+attr frontBaseHeight = 6
+attr backBaseHeight = 6
+
+attr SkyPlaneAngle = 60
+attr maxHeight = 12.5
+
+attr floorHeight = 3
+
+@Color
+attr Color = "#ad89ba"
+
+
+style Residential_Low_Density
+attr frontSetback = 3
+attr backSetback = 0
+attr sideSetback = 0
+
+attr frontBaseHeight = 3
+attr backBaseHeight = 3
+
+attr SkyPlaneAngle = 60
+attr maxHeight = 6.5
+
+attr floorHeight = 3
+
+@Color
+attr Color = "#bb4646"
+
+
+style Residential_High_Density
+attr frontSetback = 0
+attr backSetback = 0
+attr sideSetback = 0
+
+attr frontBaseHeight = 25.5
+attr backBaseHeight = 25.5
+
+attr SkyPlaneAngle = 45
+attr maxHeight = 28.5
+
+attr floorHeight = 3
+
+@Color
+attr Color = "#bb4646"
+
+
+style Mixed_Use
+attr frontSetback = 0
+attr backSetback = 0
+attr sideSetback = 0
+
+attr frontBaseHeight = 1
+attr backBaseHeight = 1
+
+attr SkyPlaneAngle = 90
+attr maxHeight = 25.5
+
+attr floorHeight = 3
+
+@Color
+attr Color = "#8bd1a4"
+
+
+
+style Mercantile
+attr frontSetback = 0
+attr backSetback = 0
+attr sideSetback = 0
+
+attr frontBaseHeight = 1
+attr backBaseHeight = 1
+
+attr SkyPlaneAngle = 90
+attr maxHeight = 17.5
+
+attr floorHeight = 3
+
+@Color
+attr Color = "#777777"
+
+
+
+
+style Public
+attr frontSetback = 2
+attr backSetback = 2
+attr sideSetback = 2
+
+attr frontBaseHeight = 7
+attr backBaseHeight = 7
+
+attr SkyPlaneAngle = 60
+attr maxHeight = 15.5
+
+attr floorHeight = 3.5
+
+@Color
+attr Color = "#BCD4D5"
+
+
+
+
+style Assembly
+attr frontSetback = 2
+attr backSetback = 2
+attr sideSetback = 2
+
+attr frontBaseHeight = 1
+attr backBaseHeight = 1
+
+attr SkyPlaneAngle = 90
+attr maxHeight = 19.5
+
+attr floorHeight = 3.5
+
+@Color
+attr Color = "#f8c283"
+
+
+
+
+
+
+

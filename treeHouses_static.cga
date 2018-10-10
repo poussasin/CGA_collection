@@ -1,0 +1,90 @@
+/**
+ * File:    treeHouses_static.cga
+ * Created: 27 Feb 2017 15:31:16 GMT
+ * Author:  Esri R&D Center Zurich
+ */
+
+version "2017.0"
+
+
+@Hidden
+import th:"rules/treeHouses.cga"
+
+
+// ******************************
+// Variables
+// ******************************
+
+const innerLot_size_x = 0.5*(scope.sx - 3*th.house_diameter)
+const innerLot_size_z = 0.5*(scope.sz - 3*th.house_diameter)
+
+const tree_diameter = 8
+const tree_spacing = 6
+const treeTrunk_diameter = 0.5
+const treeTrunk_height = 12
+
+
+// ******************************
+// Start Rule
+// ******************************
+
+Lot -->
+	StaticHouse
+	StaticTrees
+	
+	
+// ******************************
+// Rules
+// ******************************
+
+StaticHouse -->
+	t(0, 0, scope.sz - th.house_diameter)
+	s(th.house_diameter, 0, th.house_diameter)
+	th.House_NoBridge
+	
+StaticTrees -->
+	s(innerLot_size_x, 0, innerLot_size_z)
+	[ t(th.house_diameter, 0, th.house_diameter)
+	  StaticTreeLot2 ]
+	[ t(2*th.house_diameter + innerLot_size_x, 0, th.house_diameter)
+	  StaticTreeLot2 ]
+	[ t(th.house_diameter, 0, 2*th.house_diameter + innerLot_size_z)
+	  StaticTreeLot3 ]
+	[ t(2*th.house_diameter + innerLot_size_x, 0, 2*th.house_diameter + innerLot_size_z)
+	  StaticTreeLot3 ]
+
+StaticTreeLot2 -->
+	s(2*tree_diameter + tree_spacing, 0, tree_diameter)
+	center(xz)
+	s(tree_diameter, 0, tree_diameter)
+	Tree(treeTrunk_height + rand(-5, 5))
+	t(tree_diameter + tree_spacing, 0, 0)
+	Tree(treeTrunk_height + rand(-5, 5))
+					 	
+StaticTreeLot3 -->
+	s(2*tree_diameter + tree_spacing, 0, 2*tree_diameter + tree_spacing)
+	center(xz)
+	s(tree_diameter, 0, tree_diameter)
+	Tree(treeTrunk_height + rand(-5, 5))
+	[ t(tree_diameter + tree_spacing, 0, 0)
+	  Tree(treeTrunk_height + rand(-5, 5)) ]
+	[ t(0.5*(tree_diameter + tree_spacing), 0, tree_diameter + tree_spacing)
+	  Tree(treeTrunk_height + rand(-5, 5)) ]
+					 	
+Tree(trunk_height) -->
+	Crown(trunk_height)
+	s(treeTrunk_diameter, trunk_height, treeTrunk_diameter)
+	center(xz)
+	primitiveCylinder
+	color(th.treeTrunk_color)
+	Trunk.
+	
+Crown(trunk_height) -->
+	t(0, trunk_height, 0)
+	s('1, tree_diameter + rand(-5, 5), '1)
+	primitiveSphere
+	color(th.treeCrown_color)
+	
+
+	
+	

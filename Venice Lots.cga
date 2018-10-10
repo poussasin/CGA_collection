@@ -1,0 +1,364 @@
+/**
+ * Author:  pascal, Esri R&D Center Zurich
+ * Update:  andi, Esri R&D Center Zurich
+ * Update:  matt, Esri R&D Center Zurich
+ */
+
+version "2014.0"
+
+import Plant : "/ESRI.lib/rules/Plants/Plant_Loader.cga" (Name="",Height=1,Radius=1,Reporting="None",Representation=ShowTrees,RandomRotation=true,RandomBrightness=false,RandomHeights="Mature and young") # switches off the attributes in the  Inspector
+
+
+#######################
+# Attributes
+#
+
+@Order(0) @Range("Building","Plaza","Green Space")
+attr Landuse = "Building"  
+
+@Group("Building",1) @Order(1) @Range(2,5)
+attr Nbr_of_Floors = 
+	case geometry.isConcave: 60%: 2 30%: 3 else: 4
+	else:                    50%: 3 20%: 4 15%: 2 else: 5
+
+@Group("Building",1) @Order(2) @Range(3.0,4.5)	
+attr Floor_Height = rand(3.5,4.2)
+
+@Group("Building",1) @Order(3) @File("jpg","png","tif","bmp")
+attr Facade_Texture = fileRandom("facades/ven." + Nbr_of_Floors + "*tiles.jpg")
+
+@Group("Building",1) @Order(4) @Range("Automatic","Gable","Hip","Flat")
+attr Roof_Type = "Automatic"
+
+@Group("Building",1) @Order(5) @Range(15,30)
+attr Roof_Angle = rand(17,25)
+
+@Group("Building",1) @Order(6) @Range(0,1.5)
+attr Roof_Overlay = rand(0,1.2)
+
+@Group("Green Space",1) @Order(1) @Range(0,1)
+attr Tree_Density = 0.5
+@Group("Trees",3)
+@Order(1) @Range("None","Fan","Model","Analytical") @Description("Do not generate Models for whole city i.e. take care with polygon counts!")
+attr ShowTrees		= "Fan"
+
+######################################################
+######################################################
+#
+# Rules
+#
+######################################################
+
+@StartRule
+Lot --> 
+	case Landuse == "Building":
+		Platform BuildingLot
+	case Landuse == "Green Space":
+		ParkGround Forest
+	else:
+		Platform
+	
+LotInner -->
+	40% : Platform FewTrees
+	else: Lot	
+
+LotCorner --> 
+	Platform
+
+
+#######################
+# Building 
+#
+
+BuildingLot --> 
+	case (scope.sx>scope.sz*5 || scope.sz>scope.sx*5) && geometry.area<400 || geometry.nVertices<4: 
+		NIL  # getting rid of small or triangular footprints
+	case scope.sx > scope.sz*3:
+		50% : split(x){ '0.8: Footprint | ~1: FewTrees }
+		10% : split(x){ '0.9: Footprint }
+		else: split(x){ '0.7: Footprint | ~1: FewTrees }
+	else:
+		20% : Footprint
+		5%  : split(z){ '0.8: Footprint }
+		20% : split(z){ ~1: FewTrees | '0.6: Footprint }
+		30% : split(z){ ~1: FewTrees | '0.7: Footprint }
+		else: split(z){ ~1: FewTrees | '0.8: Footprint }
+
+Footprint -->	
+	extrude(Nbr_of_Floors * Floor_Height) Mass
+
+Mass --> 
+	comp(f){side: Facade | top: Roof }
+	
+	
+#####################		
+# Facades
+#
+# Note:
+# The corresponding textures have been created very quick from a few photos,
+# thus, this texture distributing and projecting method is not very ideal.
+# But it gives an idea and shows that actually everything can be projected
+# with CGA functions
+# 
+
+getFacadeBump 			= fileDirectory(Facade_Texture) + fileBasename(Facade_Texture) + ".bump.jpg"
+getFacadeSpec 			= fileDirectory(Facade_Texture) + fileBasename(Facade_Texture) + ".spec.jpg"
+const Facade_Bump 		= case fileExists(getFacadeBump): getFacadeBump else: ""
+const Facade_Spec 		= case fileExists(getFacadeSpec): getFacadeBump else: ""
+const nTilesTexture 	= float(getRange(Facade_Texture,"stories_","tiles"))  # get nbr of tiles in selected texture (filename can be random or overwritten by user)
+getActualTileWidth 		= scope.sx / ceil((scope.sx-0.1)/3.5)
+getActualFloorHeight	= scope.sy / ceil((scope.sy-0.1)/Floor_Height)
+
+Facade -->
+	texture(Facade_Texture)
+	set(material.bumpmap,Facade_Bump)
+	set(material.specularmap,Facade_Spec)
+	set(material.specular.r,0.5) set(material.specular.g,0.5) set(material.specular.b,0.5) 
+	set(material.shininess,20) set(material.reflectivity,0.3)
+	setupProjection(0,scope.xy,nTilesTexture*getActualTileWidth,Nbr_of_Floors*getActualFloorHeight) projectUV(0)	# make the 'tiles' modulo the current dimensions
+	
+FacadeColor -->	# takes a part of the texture (needed for dromers and smokestacks) ... quick way in case you do not have time to also create a "window"-less facade texture
+	texture(Facade_Texture)
+	setupProjection(0,scope.xy,75,75) projectUV(0) 
+	translateUV(0,1/nTilesTexture,1/Nbr_of_Floors)  # scales the texture large and moves texture to boundary of second tile on second floor
+	
+
+#######################
+# Platform
+#
+
+Platform -->
+	extrude(world.y,2) t(0,-2,0)
+	setupProjection(2,world.xz,5500,-3000) projectUV(2) 
+	set(material.dirtmap, "venice_satellite_mid.png")	 # using a desaturated satellite photo as dirtmap
+	comp(f){ top: PlatformTop | side: PlatformSides }
+
+PlatformTop -->	
+	setupProjection(0,world.xz,42,-42) projectUV(0) 
+	texture("streets/streets.color.bright.jpg")  
+	set(material.bumpmap,"streets/streets.bump.jpg") set(material.bumpValue,0.5)
+
+PlatformSides -->
+	setupProjection(0,scope.xy,rand(20,30),'rand(1,1.2)) projectUV(0)					 
+	texture("platforms/base.1.jpg")
+
+		
+#######################
+# Park
+#
+
+ParkGround -->
+	extrude(world.y,2) t(0,-2,0) 
+	setupProjection(0, world.xz,1200,600) projectUV(0)
+	texture("vegetation/park_bright.png")
+	setupProjection(2, world.xz,5500,-3000) projectUV(2) 
+	set(material.dirtmap, "maps/venice_satellite.png")
+	
+
+#######################
+# Trees
+#
+
+getTree = listRandom("Bay Laurel;California Incense Cedar;Date Palm;Desert Willow;Ficus;Flannelbush;Hedgehog Agave;Lacy Tree Philodendron;Leyland Cypress;Mediterranean Buckthorn;Orange Tree;Oval-leaved Privet;Palm Lily;Palo Verde;Red Alder;Rhododendron Azaleas;Rose;Saguaro Cactus;Spanish Broom;Sweetgum;Umbrella Acacia;White Poplar;")
+
+
+FewTrees -->
+	offset(-2,inside) 
+	scatter(surface,geometry.area/50*Tree_Density,uniform){ Tree }	
+	offset(-5,inside) 
+	scatter(surface,geometry.area/100*Tree_Density,uniform){ Tree }		 
+	NIL
+
+Forest -->
+	offset(-5,inside) 
+	scatter(surface,geometry.area/20*Tree_Density,uniform){ Tree }
+	offset(-10,inside) 
+	scatter(surface,geometry.area/20*Tree_Density,uniform){ Tree }
+	NIL
+
+Tree -->
+	case ShowTrees == "None":
+		NIL
+	else:
+		set(Plant.Representation,ShowTrees)
+		Plant.Generate(getTree)
+
+
+#####################		
+# Roofs
+#
+
+const getRoofTexture = fileRandom("assets/roofs/rooftile.color.*")
+const getFlatRoofTexture = "roofs/flatroof"+ceil(rand(0,9))+".png"
+const getTextureSizeU = rand(4,8)
+const getTextureSizeV = getTextureSizeU*rand(2,3)
+const roofBorder = 60%: true else: false
+const roofBorderH = case roofBorder: rand(0.2,0.4) else: 0	
+	
+Roof -->
+	case Roof_Type == "Gable":
+		GableRoof(Roof_Overlay)
+	case Roof_Type == "Hip":
+		HipRoof(Roof_Overlay)
+	case Roof_Type == "Flat":
+		FlatRoof RoofFloor(0) SmokeStack
+	case geometry.isConcave:
+		60% : FlatRoof RoofFloor(0) SmokeStack
+		else: GableRoof(Roof_Overlay)
+	case geometry.isRectangular(10) && geometry.area < 300:
+		20% : FlatRoof RoofFloor(0) SmokeStack
+		else: GableRoof(Roof_Overlay)
+	else:
+		20% : FlatRoof RoofFloor(0) SmokeStack
+		else: HipRoof(Roof_Overlay)
+
+RoofFloor(step) -->	
+	case !geometry.isConcave && p(0.35):
+		split(x){ '0.80:  RoofFloor }
+	case step == 0:            # first we cut it into smaller pieces .. 
+		60% : alignScopeToGeometry(zUp,auto) split(x){ '0.30:  RoofFloor(1) }*
+		10% : alignScopeToGeometry(zUp,auto) split(x){ '0.25:  RoofFloor(1) }*
+		5% : alignScopeToGeometry(zUp,auto) split(y){ '0.30:  RoofFloor(1) }*
+		else: split(x){ '0.2: NIL | ~1: RoofFloor(1) | '0.2: NIL } 	# .. or left and right
+	case step == 1:            # now we align to the longest edge and cut behind
+		alignScopeToGeometry(zUp,auto)
+		split(y){ ~1: RoofFloor(2) | '0.4: NIL }
+	case step == 2:            # and again we cut the sides as last try: first the right ...
+		split(x){ ~1: RoofFloor(3) | '0.2: NIL }
+	case step == 3:            # and again we cut the sides as last try: ... then the left
+		split(x){ '0.2: NIL | ~1: RoofFloor(4) }
+	case geometry.area > 100:  # in case the area is still large enough, we give it another try
+		RoofFloor(0)
+	else:                      # if nothing worked out we do not try to make a concave out of it
+		RoofFloor				
+	
+RoofFloor -->
+	case geometry.area < 10 || scope.sx < 2 || scope.sy < 1:
+		NIL
+	case geometry.isConcave:
+		extrude(Floor_Height*0.7) comp(f){side: Facade | top: FlatRoof }
+	case geometry.area > 70:
+		40% : extrude(Floor_Height*0.9) Mass
+		else: extrude(Floor_Height*0.7) comp(f){side: Facade | top: FlatRoof }
+	else:
+		40% : extrude(Floor_Height*0.7) Mass
+		else: extrude(Floor_Height*0.7) comp(f){side: Facade | top: FlatRoof }
+
+
+# Hip Roofs
+
+HipRoof(overlay) -->
+	s(scope.sx+overlay,scope.sy+overlay,'1) center(xy)
+	RoofBorder t(0,0,roofBorderH)
+	roofHip(Roof_Angle) Dormers SmokeStack
+	comp(f){ bottom: NIL | all : RoofPlane }
+
+RoofPlane -->
+	setupProjection(0,scope.xy,getTextureSizeU,getTextureSizeV) projectUV(0) 
+	texture(getRoofTexture)
+	set(material.bumpmap, "roofs/rooftile.bump.jpg") set(material.bumpValue,0.5)
+	setupProjection(2,world.xz,5500,-3000) projectUV(2) 
+	set(material.dirtmap, "venice_satellite_bright.jpg")
+	
+# Gable Roofs
+
+GableRoof(overlay) -->	
+	case scope.sx*1.8 < scope.sy:  # in this case we take the longer gable (gable direction is set to 0)
+		roofGable(Roof_Angle, overlay, 0) Dormers(0) SmokeStack
+		comp(f){ bottom: NIL | vertical: Facade | all: RoofPlane }
+	else:
+		roofGable(Roof_Angle, overlay, 0) Dormers(1) SmokeStack
+		comp(f){ bottom: NIL | vertical: Facade | all: RoofPlane }
+
+
+# Roof Ledge
+
+RoofBorder -->
+	case roofBorder:
+		extrude(roofBorderH)
+		comp(f){side = RoofBorderSides. }
+	else:
+		NIL
+
+
+# Flat Roofs
+
+FlatRoof -->
+	FlatRoofTexture Railings
+	
+FlatRoofTexture	-->
+	alignScopeToGeometry(zUp,auto)
+	setupProjection(0,scope.xy,'1,'1) projectUV(0)
+	texture(getFlatRoofTexture)
+	
+Railings -->
+	case geometry.area > 70:
+		s(scope.sx-1,scope.sy-1,'1) center(xy)
+		extrude(world.y,1.2) comp(f){ side: Railing }
+	else: 
+		NIL
+
+Railing -->
+	texture( Facade_Texture ) # set texture
+	setupProjection(0,scope.xy,nTilesTexture*getActualTileWidth,-70,0)  # setup the projection matrix according to the selected texture (and make the 'tiles' modulo the current dimensions in the width) for the height we just scale it down so that the same color as on the top of the facade is used...
+	projectUV(0)
+	
+		
+# Dormer
+
+getOrientation   = case scope.sx > scope.sz: 1 else: 0
+
+Dormers -->
+	Dormers(getOrientation)
+
+Dormers(orientation) -->
+	case scope.sx < 10 || scope.sz < 10:
+		NIL
+	case orientation == 0:
+		split(z){ ~3: NIL | { (rand(2,3)): split(x){ Roof_Overlay+1:NIL | ~1:Dormer | '0.5:NIL } | ~3: NIL }* }
+	else:
+		split(x){ ~3: NIL | { (rand(2,3)): split(z){ '0.5:NIL | ~1:Dormer | Roof_Overlay+1:NIL } | ~3: NIL }* }	
+	
+Dormer -->	
+	case scope.sy > Floor_Height *0.75 && p(0.8):
+		split(y){ Floor_Height *0.6: i("builtin:cube") DormerMass | ~1: NIL }
+	else:
+		NIL
+
+DormerMass -->
+	case getOrientation == 0:
+		comp(f){ front: Facade | side: FacadeColor | top: GableRoof(Roof_Overlay*0.4) }		
+	else:
+		comp(f){ left: Facade | side: FacadeColor | top: GableRoof(Roof_Overlay*0.4) }	
+
+
+# Smock Stack
+
+const smokeStackWidth = rand(0.4,1.5)
+
+smokeStackLength = 
+	case smokeStackWidth < 0.9: 
+		50%: 1/smokeStackWidth else: smokeStackWidth
+	else: 
+		50%: 1/smokeStackWidth 40% : 2/smokeStackWidth else: 3/smokeStackWidth 
+
+SmokeStack -->
+	case scope.sx < 8 || scope.sz < 8 || p(0.2):
+		NIL
+	case getOrientation == 0:
+		split(z){ Roof_Overlay+rand(2): NIL | smokeStackLength: split(x){ ~rand:NIL | smokeStackWidth: Stack | ~rand:NIL } | ~1: NIL }
+	else:
+		split(x){ ~1: NIL | smokeStackLength: split(z){ ~rand(0.4,1):NIL | smokeStackWidth: Stack | ~1:NIL } | Roof_Overlay+2+rand(2): NIL }
+
+Stack -->
+	case scope.sy > 0.7:
+		s('1,scope.sy+rand(0.5,1.5),'1) i("builtin:cube") comp(f){ side: FacadeColor | top: StackTop }
+	else:
+		NIL
+
+StackTop -->
+	color("#777777") Facade	# we use the window of one facade tile as smoke stack opening ;-)
+
+	
+
+	

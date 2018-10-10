@@ -1,0 +1,74 @@
+/**
+ * Author:  pascal, Esri R&D Center Zurich
+ * Update:  andi, Esri R&D Center Zurich
+ * Update:  matt, Esri R&D Center Zurich
+ */
+
+version "2014.0"
+
+
+
+#######################
+# attributes
+#
+
+# user attributes
+@Order(1) @Range(0.5,1.5)
+attr Walkway_Height = 70%: 1 else: rand(0.5,1.1)
+
+# attributes which are overwritten (either by attribute layer maps or given attribute values)
+@Group("Object Attributes",2) @Order(1) @Range("MINOR","MAJOR")
+attr type = "MINOR"   		# for the streets
+
+
+
+
+#######################
+# Street 
+#
+
+Freeway                       --> Street
+FreewayEntry                  --> Street
+Joint                         --> Street
+Roundabout                    --> Street
+RoundaboutIsland              --> Sidewalk
+RoundaboutEntry               --> Street
+
+
+
+Crossing -->
+	case geometry.area < 5:                # crossings of this size must be coming from border streets (used only to determine the block borders)
+		NIL
+	case type == "MINOR":			       # other minor crossings are for sure walkways
+		Walkway( Walkway_Height )
+	case geometry.area > 54:               # crossings of this size must be over the wide waterways. ergo we do not create geometry. 
+		NIL
+	case initialShape.name == "Waterway":  # also no crossing in case they have been manually renamed
+		NIL
+	else:                                  # otherwise we create some bridges
+		Walkway( Walkway_Height )
+
+Junction --> Crossing
+
+JunctionEntry --> Crossing
+
+Street -->
+	case initialShape.name == "Border" || initialShape.name == "Waterway":
+		NIL
+	else:
+		Walkway( Walkway_Height )
+
+Sidewalk --> NIL
+
+Walkway -->
+	Walkway( Walkway_Height )
+
+Walkway(h) -->
+	extrude(world.y,h) t(0,-h,0)
+	setupProjection(0,world.xz,20,-20,4) projectUV(0) 
+	texture("streets/streets.color.reddish.jpg")  					# a mix between a pavement texture ..
+	set(material.bumpmap,"streets/streets.bump.jpg") set(material.bumpValue,0.3)
+	setupProjection(2,world.xz,5500,-3000) projectUV(2) 
+	set(material.dirtmap, "venice_satellite_mid.png")	 			# .. and desaturated the satellite photo
+	
+			
