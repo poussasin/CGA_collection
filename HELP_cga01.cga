@@ -1,0 +1,70 @@
+/**
+ * File:    HELP_cga.cga
+ * Created: 26 Sep 2018 06:35:12 GMT
+ * Author:  Administrator
+ */
+
+version "2018.0"
+
+	@Range(2,6)
+	attr groundfloor_height = 4
+
+	@Range(2,6)
+	attr floor_height       = 3.5
+
+	@Range(1,25)
+	attr height             = 18
+	attr tile_width         = 20
+
+	@StartRule
+	Lot-->
+		extrude(height) Building
+	
+	Building--> #切分建筑面
+		comp(f){front: Frontfacade | left: Sidefacade 
+		| right: Sidefacade | back: Frontfacade | top: Roof}	
+		# 将建筑切分为正面、侧面、背面与顶面，并定义名称
+		Frontfacade--> #对模型正面进行定义
+			split(y){groundfloor_height: Groundfloor
+			| {~floor_height: Floor}*
+			| floor_height: Topfloor}
+		Sidefacade-->
+			split(y){groundfloor_height: Sidefloor
+			| {0.25: Tile | ~floor_height: Sidefloor}*
+			}
+			
+	Floor-->
+		split(x){1.5: Wall
+		| {~tile_width: Tile}*
+		| 1.5: Wall}
+		
+	Groundfloor-->
+		split(x){1: GroundWall
+		|{~tile_width: GroundTile}*
+		| 1: GroundWall}
+		
+	Sidefloor-->
+		split(x){1: GroundWall
+		|{~tile_width: GroundTileS}*
+		| 1: GroundWall}
+		
+	Topfloor-->
+		split(x){1: Wall
+		| {~tile_width: TileT}*
+		| 1: Wall}
+		
+	TileT-->
+		split(x){~4: ZhongT   | ~0.5: Wall1 |
+				 ~4: Lianlang | ~0.5: Wall5 |
+				 ~4: Lianlang | ~0.5: Wall5 |
+				 ~4: Lianlang | ~0.5: Wall1
+				 }* #切割出顶部阳台面
+				 
+	Tile-->
+		split(x){~4: Zhong    | ~0.5: Wall1 |
+				 ~4: Lianlang | ~0.5: Wall5 |
+				 ~4: Lianlang | ~0.5: Wall5 |
+				 ~4: Lianlang | ~0.5: Wall1
+				 }* #切割出阳台面
+				 	
+	ZhongT

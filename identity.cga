@@ -1,0 +1,12 @@
+/**
+ * File:    identity.cga
+ * Created: 24 Jul 2012 13:15:53 GMT
+ * Author:  pasc6769
+ */
+
+version "2014.0"
+
+Init --> 
+	rotate(abs, world, 0,0,0)
+	i("building_q/building_q_0.obj",yUp,keepSizeAndPosition)
+	center(xz)

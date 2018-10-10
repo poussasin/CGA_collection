@@ -1,0 +1,26 @@
+/**
+ * File:    Insert_Object.cga
+ * Created: 25 Mar 2014 20:02:00 GMT
+ * Author:  chri7180
+ */
+
+version "2015.0"
+
+@Range(-360, 360)
+attr Rotation = 0
+
+@File
+attr Model_File = "" 
+
+@Range(0.1,10.1)
+attr Scale = 1
+
+Shape -->
+	s(0,0,0) 
+	center(xz)
+	i(modelFileChecked)
+	s('Scale,'Scale,'Scale)
+	center(xz)
+	r(scopeCenter,0,Rotation,0)
+
+modelFileChecked = case fileExists(Model_File): Model_File else: "builtin:cube"
