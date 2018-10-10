@@ -1,0 +1,225 @@
+/**
+ * File:    flatroof.cga
+ * Created: 1 Feb 2008
+ * Updated: 21 October 2011
+ */
+
+version "2011.1"
+
+
+
+#######################
+#  Attributes
+#  (will be overwritten by master rule)
+
+@Order(2) @Range(4,7)
+attr Floor_Height = 5
+attr Create_Props = true
+
+
+#######################
+#  Constants
+#
+
+const getRoofTexture 		= "flatroofs/flatroof" + ceil(rand(10)) + ".png"
+const getLoftRoofTexture 	= "flatroofs/flatroof" + ceil(rand(10)) + ".png"
+const ventilationProb 		= 0.8
+const pipeProb 				= 0.6
+
+#######################
+#  Functions
+#
+
+isSmall = scope.sx < 7
+isShort = scope.sz < 7
+isWide	= scope.sx > 12
+isLong	= scope.sz > 12
+
+#######################
+#  Starting Rule
+#
+
+Init --> 
+	RoofTexture
+	alignScopeToGeometry(yUp,auto) RoofStructures
+
+const topDarken = 30%: "#dddddd" 30%: "#eeeeee"  else:"#ffffff" 
+
+RoofTexture -->
+	alignScopeToGeometry(zUp,auto) setupProjection(0,scope.xy,'1,'1) projectUV(0)
+	texture(getRoofTexture) color(topDarken)
+	set(material.specularmap,"") 
+	set(material.opacitymap,"") 
+	
+# cut it on all sides (trying to add some rectangularity)	
+RoofStructures -->
+	set(material.specularmap,"") 
+	set(material.opacitymap,"") 
+	s('.9,'1,'.9) center(xz) 
+	split(z){ 'rand(.2): Props Antenna
+			| ~1 	   : setPivot(xyz,1) split(z){ 'rand(.2): Props Antenna | ~1: Lofts | 'rand(.2): Props Antenna }
+			| 'rand(.1): Props Antenna }
+
+
+#######################
+# Lofts (the mini floors on the top of the roof)
+#
+
+# make it smaller
+Lofts -->
+	case geometry.area > 250:
+		split(z){ 'rand(.3,.7) : LargeLoft | ~1 : LargeLoft }		# if area is enough large we create 2 (large) lofts
+	case scope.sx < scope.sz: 
+		split(z){ ~1 : Props Antenna | 'rand(.5,.7) : Loft }
+	else:
+		split(x){ 'rand(.5,.7) : Loft	| ~1 : Props Antenna }
+
+# large lofts can be made smaller again		
+LargeLoft -->
+	case geometry.isRectangular(3):
+		split(x){ 'rand(.0,.5) : Props Antenna | ~1 : Loft }
+	else:
+		split(x){ 'rand(.2,.6) : Props Antenna | ~1 : Loft }		# nonRectangulars are cutted a little bit more to create more rectangular structures on the roof
+
+# checking the shape
+Loft -->
+	case geometry.area < 50 || geometry.nVertices == 3 :	# no lofts for triangluar shapes and small ones, instead Props are invoked
+		Props Antenna
+	case geometry.area < 150 || isSmall || isShort :		# the standard case: invokes an extrusion
+		LoftMass											
+	else:													# big lofts can be also L-shaped
+		60% : LoftLShape
+		else: LoftMass 
+		
+# creating a L-shaped		
+LoftLShape -->
+	case isLong:
+		split(z){ ~1: split(x){ ~1 : NIL | 'rand(.5,.8) : LoftMass } | 'rand(.25,.4): LoftMass }
+	case isWide:
+		split(z){ ~1: split(x){ ~1 : NIL | 'rand(.5,.8) : LoftMass } | 'rand(.4,.6) : LoftMass }
+	else:
+		split(z){ ~1: split(x){ ~1 : NIL | 'rand(.5,.8) : LoftMass } | 'rand(.4,.7) : LoftMass }
+		
+# setting the height of the loft		
+LoftMass -->
+	case geometry.area > 150:
+		80% : [ t(0,Floor_Height*.75,0) Props Antenna RoofBillboard ] LoftMass(Floor_Height*.75)    # the bigger lofts have also props on there roof
+		else: [ t(0,Floor_Height*1.5,0) Props Antenna RoofBillboard ] LoftMass(Floor_Height*1.5)
+	else:
+		80% : LoftMass(Floor_Height*.75)
+		else: LoftMass(Floor_Height*1.6)
+
+# and finally the extrusion
+LoftMass(h) -->
+	extrude(h) comp(f){ side: Wall | top : LoftRoofTexture }
+
+LoftRoofTexture -->
+	setupProjection(0,scope.xy,scope.sx,scope.sy,1) projectUV(0)
+	texture(getLoftRoofTexture) color(topDarken)
+
+
+#######################
+# Props (roof stuff like funnels, antennas and ventilation)
+#
+
+Props -->
+	case Create_Props:
+		Pipes
+		innerRect Ventilation(rand(5,10))
+	else:
+		NIL
+
+const ventilationRatio = 60%: 2 20%: 3 else: 4
+
+getVentilationTexture =
+	case ventilationRatio == 1: "ventilation/v1"+ventilationRatio+"_0"+ceil(rand(9))+".png"
+	case ventilationRatio == 2: "ventilation/v1"+ventilationRatio+"_0"+ceil(rand(4))+".png"
+	else                      : "ventilation/v1"+ventilationRatio+"_0"+ceil(rand(3))+".png"
+				
+# small cube for ventilation		
+Ventilation(width) -->
+	case p(ventilationProb) && scope.sx > width && scope.sz > width*ventilationRatio:
+		t(rand(scope.sx-width),0,rand(scope.sz-width*ventilationRatio)) s(width,'1,width*ventilationRatio) # positioning
+		extrude(rand(0.6,1)) //comp(f){ side = LoftRoofTexture | top: VentilationTop }
+		setupProjection(0,scope.xz,'1,'1) projectUV(0)
+		texture(getVentilationTexture)		
+		set(material.bumpmap,getVentilationTexture)	
+		set(material.bumpValue, 2)
+	else: NIL
+
+#######################
+# Pipes
+#
+
+getPipeTexture = "flatroofs/flatroof" + ceil(rand(10)) + ".png"
+
+pipeDist = 80%: 3 else: scope.sx*rand(0.2,0.4)
+
+# according to the given probability, a pipe of approx 1 width is created
+Pipes -->
+	case p(pipeProb): 
+		texture(getPipeTexture)
+		split(z){ ~rand(.2,1)   : NIL 
+				| (rand(1,1.5)) : split(x){ pipeDist: NIL | ~1: Pipe | pipeDist: NIL } 
+				| ~rand(.2,1)   : NIL }
+	else: NIL
+
+# the pipe consists of a start, middle and end part
+Pipe -->
+	case scope.sz > 0.75 && scope.sx > 4:
+		70% :
+			s('1,scope.sz*0.5,'1) primitiveCube()
+			split(x){ scope.sz: PipeStart | ~1: RoundPipe Funnels | scope.sz: PipeEnd }
+		else:
+			s('1,scope.sz*0.5,'1) primitiveCube() RectPipe. Funnels
+	else: 
+		NIL
+	
+PipeStart --> 
+	80% : i("flatroofs/pipeStart.obj")
+	else: s('1,'1.2,'1.4) center(z) primitiveCube() 
+
+RoundPipe --> i("flatroofs/pipeMiddle.obj") rotateUV(0,90) scaleUV(0,8,8)
+
+PipeEnd --> 
+	80% : i("flatroofs/pipeEnd.obj") 
+	else: s('1,'1.2,'1.4) center(z) primitiveCube() 
+
+# recursive call to invoke funnels along the pipe
+Funnels -->
+	case scope.sx > 10:
+		70% : split(x){ 'rand(0.4): NIL | scope.sz*1.4: Funnel | ~1: Funnels }
+		else: NIL
+	else: NIL
+
+# make it a little thicker and higher than the pipe
+Funnel -->
+	s('1,'1.4,'1.4) center(z) primitiveCube()
+
+
+#######################
+# Bottom
+# (siplified version of the whole thing, which only invokes pipes ... to give the bottoms some more structure)
+#
+
+const bottomDarken = 30%: "#666666" 30%: "#999999" else: "#888888" 
+	
+BottomProps -->
+	alignScopeToGeometry(yUp,auto) 
+	s('.9,'1,'.9) center(xz)
+	split(z){ 'rand(.2) : Pipes 
+			| ~1 	    : setPivot(xyz,1) BottomPipes
+			| 'rand(.2) : Pipes }
+
+BottomPipes -->
+	split(z){ 'rand(.2) : Pipes 
+			| ~1		: split(x){ 'rand(.3,.7) : Pipes | ~1 : Pipes } 
+			| 'rand(.2) : Pipes }
+	
+BottomTexture -->
+	color(bottomDarken)
+	alignScopeToGeometry(zUp,auto)
+	setupProjection(0,scope.xy,scope.sx,scope.sy) projectUV(0)
+	texture(getRoofTexture)
+	set(material.specularmap,"") 
+	set(material.opacitymap,"") 	 

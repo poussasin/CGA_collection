@@ -1,0 +1,35 @@
+/**
+ * File:    ApplyColor.cga
+ * Created: 9 Apr 2014 18:51:18 GMT
+ * Author:  chri7180
+ */
+
+version "2015.0"
+
+@Color
+attr Model_Color = "#FFFFFF"
+
+attr Transparency = 0
+
+attr ApplyDirtMap = false
+
+@StartRule
+PictometryModel -->
+	set(material.opacity, 1 - Transparency)
+	texture("")
+	color(Model_Color)
+	comp(f) {all: AddDirtMap}
+
+###################
+
+dirtmapTexture = fileRandom("/ESRI.lib/assets/General/Dirtmap/dirtmap_*.jpg")
+	
+AddDirtMap -->
+	case ApplyDirtMap:
+		alignScopeToGeometry(yUp, any, world.lowest)
+		rotateScope(0,rand(360),0)
+		setupProjection(2,scope.xz,'1,'1)
+		projectUV(2)
+		set(material.dirtmap, dirtmapTexture)
+	else:	
+		Done.

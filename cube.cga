@@ -1,0 +1,27 @@
+
+version "2015.0"
+
+@Handle(shape=Cube)
+attr height = 10
+
+@Handle(shape=Cube, axis=x, skin=sphere, color="#6666ff")
+attr width = 10
+
+@Handle(shape=Cube, axis=z, skin=diameterArrow)
+attr depth = 10
+
+@Handle(shape=ShapeForHandleOnly, axis=x, reference=origin, slip=inside, translate={0,0.5,0})
+attr offsetX = 5
+
+
+Lot --> 
+	[ s(offsetX,height,1) ShapeForHandleOnly ] t(offsetX,0,0) 
+	t(0,0,-depth/2) s(width,0,depth)
+	extrude(height)
+	Cube
+
+Cube --> 
+	color("#E5E6E7")
+
+ShapeForHandleOnly --> NIL
+	

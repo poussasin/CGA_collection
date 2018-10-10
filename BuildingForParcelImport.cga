@@ -1,0 +1,537 @@
+/**
+ * File:    Building.cga
+ * Created: 19 Jun 2014 13:33:07 GMT
+ * Author:  chri7180
+ */
+ 
+version "2015.0"
+
+
+#+++++++++++++++++++++++++++++++++++++++  
+# Building Version - Import This:
+#import  : "Referenced/Zoning_Usage_Typology.cga"
+# Then search above import ID to comment out report usage.     
+#+++++++++++++++++++++++++++++++++++++++
+
+/*
+UsageVisual -->
+	case Show_Usage:
+		t(0, Eave_Height + 20, 0)
+		USAGE_PROFILE.BarChart(Total_GFA)
+	else:
+		NIL
+*/  
+#@Hidden
+#import PIE_CHART: "Referenced/Pie_Chart.cga"
+
+
+
+@Group("Building Type",10) @Order(1)
+#@Range("Residential", "Commercial", "Hotel", "Office", "Parking", "Res with 1 Floor Comm", "Mixed Use")
+@Range("Residential", "Commercial", "Hotel", "Mixed-Use", "Parking", "Misc")
+attr Typology = "Residential"
+
+
+
+# Passed In
+@Hidden
+attr Floor_Variation = 0 #xyx
+# Set
+@Hidden
+attr This_Floor_Variation = 0
+Floor_Count_Varied = Floor_Count + This_Floor_Variation #xyx
+Max_Floor_For_Texturing = Floor_Count + Floor_Variation #xyx
+
+
+@Description("The number of stories in each mass. Set Manually / Interactively.")
+@Range(1,60)
+@Group("Building Type") @Order(2)
+attr Floor_Count = 10 
+
+@Description("Since we don’t know if the mass contains the first floor, top floor, or part of the middle, it only makes sense that the user cane directly set the floor height.")
+@Range(0.1,10.1)
+@Group("Building Type") @Order(3)
+attr Floor_Height_Average = 3.5
+
+#attr Roof_Height = 3  
+
+@Range("Textured", "Model", "Zoning", "Heatmap Brightness 0-1", "Heatmap Vector 1-9","Heatmap Rule, Flood Risk")
+@Group("Display",30) @Order(1)
+attr Display_Type = "Textured"
+
+@Group("Display") @Order(2)
+@File
+attr Facade_Texture = getFacadeTexture
+
+@Group("Display") @Order(3)
+@File
+attr Roof_Texture = getRoofTexture
+
+#@Group("Display") @Order(4)
+#@Range("Flat","Green Roof")
+#attr Roof_Type = "Flat"
+
+@Group("Display") @Order(13)
+@Range(-10.1,10.1)
+attr Texture_Horizontal_Offset = 0
+
+
+
+##################
+
+@Group("Identification", 70) @Order(1)
+@Description("Unique ID for each building mass so they can be represented in the Dashboard. Set manually.")
+attr BuildingID = ""
+
+@Group("Identification") @Order(2)
+@Description("Unique ID for each parcel. Link to Zoning parcel layer.")
+attr PARCEL_ID = ""
+
+
+###################
+
+@Group("Linked Attributes", 80) @Order(14)
+@Description("File name for static 3D Model")
+attr ModelName = ""
+
+@Group("Linked Attributes") @Order(14)
+@Description("Link to zoning layer.")
+attr Zoning = "WHITE"
+
+@Group("Linked Attributes") @Order(15)
+@Description("Link to vacant parcels layer.")
+attr Parcel_Area = 0
+
+
+@Group("Linked Attributes") @Order(1)
+attr Values_0_to_1 = 0
+
+@Group("Linked Attributes") @Order(1)
+attr Values_1_to_9 = 1
+
+##################
+
+@Group("Audit", 100) @Order(14)
+attr Show_Texture_Guides = false
+
+@Group("Audit", 100) @Order(15)
+attr Hide_Flags = false
+ 
+@Group("Audit", 100) @Order(16)
+attr Show_Usage = false
+########################
+
+
+
+#######################
+
+
+const Footprint_Area = geometry.area 
+Total_GFA = Footprint_Area * Floor_Count_Varied
+Eave_Height = Floor_Count_Varied * Floor_Height_Average
+#Total_Height = Eave_Height
+# const Total_Height = Eave_Height + Roof_Height
+# attr Roof_Height = 0.5
+
+const Model_File = "" #/JLD_Data/assets/ColladaBuildings/" + ModelName + ".dae"
+
+
+const startElevation = scope.elevation
+const facadeDirectory =
+	case Typology == "Unknown":
+		"Buildings_Standard/BuildingTextures/Facades/Unknown/"
+	else:
+		"Buildings_Standard/BuildingTextures/Facades/"	
+const roofDirectory = "Buildings_Standard/BuildingTextures/Roofs/Flat/"
+
+
+######################################################
+######################################################
+
+
+@StartRule
+BuildingFootprint -->
+	# For dashboard:
+	report("BuildingID", BuildingID)
+	report("ParcelID", PARCEL_ID )
+	#USAGE_PROFILE.ReportUsages(Total_GFA, 1)
+	#UsageVisual
+	BuildingFootprintDispatch
+	
+BuildingFootprintDispatch -->
+	case Display_Type == "Model":
+		alignScopeToAxes()							# the models are oriented relative to xyz-space
+		s('1, Eave_Height, '1)						# set the dimensions (no change in horizontal directions)
+		i(Model_File)								# Insert the model.
+		reverseNormals								# Reverse Normals is if necessary.
+	case Display_Type == "Textured":
+		set(This_Floor_Variation, rint(rand(-rint(Floor_Variation), rint(Floor_Variation))))
+		#print("Floor_Count "+Floor_Count) #xyx
+		#print("Floor_Variation "+Floor_Variation) #xyx
+		#print("This_Floor_Variation "+This_Floor_Variation) #xyx
+		#print("Floor_Count_Varied "+Floor_Count_Varied) #xyx
+		#print("Max_Floor_For_Texturing "+Max_Floor_For_Texturing)
+		alignScopeToAxes(y)
+		s('1,0,'1)
+		GroundFloors
+		OtherFloors 
+		TopFloors
+		Roof
+		ShowTextureGuides
+		#DebugToConsole
+	else: 
+		alignScopeToAxes(y)
+		s('1,0,'1)
+		extrude(Eave_Height)
+		ColoredBuilding
+
+		
+#########################
+
+# Like top to bottom: Commercial, Parking, Office, Hotel, Residential, Misc
+
+
+ColoredBuilding -->			
+	case Display_Type == "Zoning":
+		#print(Zoning)
+		color(getZoningData_Color_Hex(Zoning))
+	case Display_Type == "Heatmap Brightness 0-1":
+		color(colorRamp("greenToRed", (1 - Values_0_to_1)))	
+	case Display_Type == "Heatmap Vector 1-9":
+		color(colorRamp("greenToRed", integerOneToNine((Values_1_to_9))))	
+	case Display_Type == "Heatmap Rule, Flood Risk":
+		# XX TEMP ESTIMATED RANGE!
+		color(colorByEvalFloodRisk(startElevation, 5, 12))
+	else:
+		# Error.
+		print("Display_Type not found: " + Display_Type)
+		X. 
+
+integerOneToNine(value) = map_numbers(value, 1,9,0,1) 
+map_numbers(value, start01 , stop01 , start02 , stop02 ) =
+	case value > 0: 
+		((value - start01 )/( stop01 - start01 ) * ( stop02 - start02 )) + start02
+	else: 0
+
+############################################
+# TEXTURING
+
+# XX Test this for low floor count issues.
+
+# This part is for finding average floor height, based on total height and floor heights.
+
+#XX TEMP!
+
+/*
+
+We pick middle texture with at least Max_Floor_For_Texturing floors, just in case no floor and top are given.
+
+If ground floor count will cover building, or more, then use that for whole building.
+else if only both top and ground fit, then use no middle.
+else if at least one middle floor will fit between ground and top, then do that (usual way).
+
+If ground or top is missing, then they evaluate to zero, and we watch out for 
+
+
+case groundFloorsCoverBuilding:
+	use entire ground to cover building - may need to shorten texture. 
+
+*/
+
+groundFloorsCoverBuilding = textureFloorsGround >= Floor_Count_Varied
+groundAndTopWontFit = (textureFloorsGround + textureFloorsTop) > Floor_Count_Varied
+
+groundFloorCountFinal = 
+	case groundFloorsCoverBuilding: Floor_Count_Varied
+	else: textureFloorsGround
+
+otherFloorCountFinal = 
+	case groundFloorsCoverBuilding: 0
+	case groundAndTopWontFit: Floor_Count_Varied - textureFloorsGround # Skip top.
+	else: Floor_Count_Varied - textureFloorsGround - textureFloorsTop # Can be zero.
+
+topFloorCountFinal = 
+	case groundFloorsCoverBuilding: 0
+	case groundAndTopWontFit: 0
+	else: textureFloorsTop
+
+# For finding projections based on middle texture's ratio of X to Y per floor.
+pixelsXFacadeTexture = imageInfo(Facade_Texture, sx)
+pixelsYFacadeTexture = imageInfo(Facade_Texture, sy)
+pixelsYPerFloor = pixelsYFacadeTexture / textureFloorsOther
+pixelsXPerYPerFloor = pixelsXFacadeTexture / pixelsYPerFloor
+allTexturesWidth = Floor_Height_Average * pixelsXPerYPerFloor
+ 
+# Find other floors projection and height.
+otherTextureProjectionY = Floor_Height_Average * textureFloorsOther
+otherFloorsHeight = Floor_Height_Average * otherFloorCountFinal 
+
+groundFloorsHeight = Floor_Height_Average * groundFloorCountFinal 
+
+topFloorsHeight = Floor_Height_Average * topFloorCountFinal
+
+
+
+
+
+
+
+DebugToConsole -->
+	print("===========================================")
+	print("Floor_Count_Varied = "+ Floor_Count_Varied)
+	print("Floor_Height_Average = "+ Floor_Height_Average)
+	
+	print("groundFloorsHeight = "+ groundFloorsHeight)
+	
+
+	print("pixelsXFacadeTexture = "+ pixelsXFacadeTexture)
+	print("pixelsYFacadeTexture = "+ pixelsYFacadeTexture)
+	print("pixelsYPerFloor = "+ float(pixelsYPerFloor))
+	print("pixelsXPerYPerFloor = "+ pixelsXPerYPerFloor)
+	
+	print("allTexturesWidth = "+ allTexturesWidth)
+	print("otherTextureProjectionY = "+ otherTextureProjectionY)
+	print("otherFloorsHeight = "+ otherFloorsHeight)
+
+
+	
+GroundFloors -->
+	case groundFloorsHeight > 0:
+		extrude(groundFloorsHeight)
+		comp(f) {side: TextureGround }
+	else:
+		NIL	
+	
+TextureGround -->
+	setupProjection(0, scope.xy, allTexturesWidth, groundFloorsHeight, 
+		Texture_Horizontal_Offset, 0) 
+	projectUV(0)
+	texture(facadeTextureGround)
+	
+
+OtherFloors -->
+	case otherFloorsHeight > 0:
+		translate(rel, world, 0, groundFloorsHeight, 0)
+		extrude(otherFloorsHeight)
+		comp(f) {side: TextureOther}
+	else:
+		NIL	
+
+TextureOther -->
+	setupProjection(0, scope.xy, allTexturesWidth, otherTextureProjectionY,	
+		Texture_Horizontal_Offset, 0) 
+	projectUV(0)
+	texture(Facade_Texture)
+
+
+TopFloors -->
+	case topFloorsHeight > 0: 
+		translate(rel, world, 0, groundFloorsHeight + otherFloorsHeight, 0) 
+		extrude(topFloorsHeight)
+		comp(f) {side: TextureTop}
+	else:
+		NIL
+	
+TextureTop -->
+	setupProjection(0, scope.xy, allTexturesWidth, topFloorsHeight, 
+		Texture_Horizontal_Offset, 0) 
+	projectUV(0)
+	texture(facadeTextureTop)
+
+
+Roof -->
+	translate(rel, world, 0, Eave_Height, 0)
+	TextureRoof
+	 
+TextureRoof -->
+	#print("Roof_Texture = " + Roof_Texture)
+	alignScopeToAxes(y)
+ 	setupProjection(0,scope.xz,scope.sx,scope.sz)
+ 	projectUV(0) 
+ 	color(1,1,1)
+	texture(Roof_Texture)
+	# XX Fix above: Stretch roof texture to edges of roof. 
+
+ShowTextureGuides -->
+	case Show_Texture_Guides:
+		offset(guideThickness)
+		comp(f) {border: FloorGuide(1)}
+	else:
+		NIL
+
+const guideThickness = 1 
+
+	
+FloorGuide(floorIndex) -->
+	case floorIndex > Floor_Count_Varied: NIL
+	else:
+		translate(rel, world, 0, Floor_Height_Average, 0)
+		color(
+			case floorIndex == textureFloorsGround: "#ff0000"
+			case floorIndex == textureFloorsGround + otherFloorCountFinal: "#ff0000"
+			else: "#ffffff"
+		)
+		X.
+		FloorGuide(floorIndex + 1)
+		 
+
+
+
+
+
+
+
+
+
+###############################################################
+# Texture file search functions (modified from IntCity Wizard):
+
+# XX Make better roof textures, and add boxes and stuff.
+getRoofTexture = fileRandom(roofDirectory + "*.jpg")
+
+getFacadeTexture = _selectGoodUpperfloorsTexture(_getHigherUpperfloorsTextures)
+
+const NeighborLookup	= 20		# number of neighboring textures in the folder to look up to find a texture which fits well to the building height
+
+_getAllUpperfloorTextures = fileSearch(facadeDirectory + "*_f*")
+_getHigherUpperfloorsTextures = fileSearch("$" + facadeDirectory + ".*_f" + _regexRangeTo999(Max_Floor_For_Texturing) + ".*") 
+_selectGoodUpperfloorsTexture(list) =
+	case listSize(list) > 9	: listRandom(_firstEntries(list))						# textures with same or higher floorcount found, so we take the first $NeighborLookup of the list
+	else : listRandom(_lastEntries(_getAllUpperfloorTextures))   # not many textures with same or higher floorcount found, so we just take the last $NeighborLookup of the list (i.e. the highest ones)
+
+# file library utils
+_firstEntries(list) = listRange(list,0,NeighborLookup-1)
+_lastEntries(list) = listRange(list,listSize(list)-NeighborLookup,listSize(list))			
+
+
+_hundreds(n) = floor(n/100)	
+_tens(n) = floor((n/10)%10)	 
+_ones(n) = floor(n%10)	
+_above(n) = case n<9:	"["+(n+1)+"-9]" else: "X" 		# X because otherwise no range needed (and X will have no hits i.e. the corresponding row in the regex will be useless with X)
+_regexRangeTo999(n) =
+	"(" + _hundreds(n)			+ _tens(n)			+ "["+_ones(n)+"-9]" +
+	"|" + _hundreds(n)			+ _above(_tens(n))	+ "[0-9]" +
+	"|" + _above(_hundreds(n))	+ "[0-9]" 			+ "[0-9])"
+
+_round1(val) = case val>0.5: rint(val) else: 1
+textureFloorsOther = _round1(float(getRange(Facade_Texture,"_f",".jpg")))
+
+
+const buildingName = getRange(Facade_Texture, facadeDirectory, "_f")
+const facadeTextureGround = fileRandom(facadeDirectory + buildingName + "_g*")
+const facadeTextureTop = fileRandom(facadeDirectory + buildingName + "_t*")
+
+const textureFloorsGroundFloat = float(getRange(facadeTextureGround, "_g",".jpg"))
+const textureFloorsGround = 
+	case facadeTextureGround == "": 0
+	case textureFloorsGroundFloat <= 0: 0
+	else: textureFloorsGroundFloat
+
+const textureFloorsTopFloat = float(getRange(facadeTextureTop, "_t",".jpg"))
+const textureFloorsTop = 
+	case facadeTextureTop == "": 0
+	case textureFloorsTopFloat <= 0: 0
+	else: textureFloorsTopFloat
+
+
+
+
+#############################################
+getZoningData_Color_Hex(zone) = 
+
+
+
+listItem(getZoningData(zone),22)
+
+getZoningData(zone) = 
+    case zone =="BUSINESS INDUSTRY": "2.8;0.5;36;6;6;6;15;7.5;5;5;5;5;5;3;3;3;3;3;4.5;213;173;199;#D5ADC7;Business Industry;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="BUSINESS PARK": "2.8;1;36;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;0;122;160;#007AA0;Business Park, White Site;0;0;60;20;20;0;0;0;UTILITY;"
+    case zone =="CEMETERY": "1;0.1;0;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;158;137;0;#9E8900;Cemetery;0;0;0;0;0;0;0;100;WHITESITE;"
+    case zone =="CIVIC & COMMUNITY INSTITUTION": "1.4;0.8;4;5;5;5;15;7.5;5;5;5;5;5;3;3;3;3;3;3;204;0;33;#CC0021;Civic & Community Institution;0;0;0;0;0;0;0;100;OFFICE_CIVIC;"
+    case zone =="COMMERCIAL": "2.8;0.8;36;5;5;5;15;7.5;5;5;5;5;5;3;3;3;3;3;3;33;81;153;#215199;Commercial;0;0;0;100;0;0;0;0;COMMERCIAL;"
+    case zone =="COMMERCIAL & RESIDENTIAL": "2.8;0.4;36;5;5;5;15;7.5;5;5;5;5;5;3;3;3;3;3;3;53;173;229;#35ADE5;Commercial & Residential;60;0;0;40;0;0;0;0;COMMERCIAL;"
+    case zone =="EDUCATIONAL INSTITUTION": "1.4;0.8;4;5;5;5;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3;242;242;193;#F2F2C1;Educational Institution;0;0;0;0;0;0;0;100;OFFICE_CIVIC;"
+    case zone =="HEALTH & MEDICAL CARE": "1.4;0.8;4;5;5;5;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3;204;0;33;#CC0021;Health & Medical Care;0;0;0;0;0;0;0;100;OFFICE_CIVIC;"
+    case zone =="LIGHT RAPID TRANSIT": "1;0;0;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;255;255;255;#FFFFFF;Light Rapid Transit;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="MASS RAPID TRANSIT": "1;0;0;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;255;255;255;#FFFFFF;Mass Rapid Transit;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="OPEN SPACE": "1;0;0;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;170;178;0;#AAB200;Open Space;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="PARK": "1;0;0;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;0;163;58;#00A33A;Park;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="PARKING - MCSP": "1.6;0.8;5;5;5;5;15;7.5;5;5;5;5;5;3;3;3;3;3;4.5;255;255;255;#FFFFFF;Parking - MSCP;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="PLACE OF WORSHIP": "1.6;0.8;5;5;5;5;15;7.5;5;5;5;5;5;3;3;3;3;3;3;204;0;33;#CC0021;Place of worship;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="PORT / AIRPORT": "1.6;0.8;5;5;5;5;15;7.5;5;5;5;5;5;3;3;3;3;3;3;209;209;209;#D1D1D1;Port or Airport;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="LANDED HOUSING": "1;0.5;5;4.5;3.6;3.6;3;3;3;3;3;3;0;0;0;0;0;0;3;244;186;130;#F4BA82;Landed Housing;100;0;0;0;0;0;0;0;RESIDENTIAL;"
+    case zone =="RESIDENTIAL": "2.1;0.4;24;5;3.6;5;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3.6;244;186;130;#F4BA82;Residential;100;0;0;0;0;0;0;0;RESIDENTIAL;" # xx
+    case zone =="VACANT LAND": "2.1;0.4;24;5;3.6;5;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3.6;244;186;130;#F4BA82;Residential;100;0;0;0;0;0;0;0;RESIDENTIAL;" # xx
+    case zone =="RESIDENTIAL, LOW": "1.4;0.4;5;5;3.6;3.6;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3.6;244;186;130;#F4BA82;Residential;100;0;0;0;0;0;0;0;RESIDENTIAL;"
+    case zone =="RESIDENTIAL, MEDIUM": "1.6;0.4;12;5;3.6;5;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3.6;244;186;130;#F4BA82;Residential;100;0;0;0;0;0;0;0;RESIDENTIAL;"
+    case zone =="RESIDENTIAL, MEDIUM HIGH": "2.1;0.4;24;5;3.6;5;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3.6;244;186;130;#F4BA82;Residential;100;0;0;0;0;0;0;0;RESIDENTIAL;"
+    case zone =="RESIDENTIAL, HIGH": "2.8;0.5;36;5;3.6;5;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3.6;244;186;130;#F4BA82;Residential;100;0;0;0;0;0;0;0;RESIDENTIAL;"
+    case zone =="RESIDENTIAL, VERY HIGH": "5;0.6;50;5;3.6;5;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3.6;244;186;130;#F4BA82;Residential;100;0;0;0;0;0;0;0;RESIDENTIAL;"
+    case zone =="RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, LOW": "1.4;0.4;5;5;3.6;3.6;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3.6;232;130;132;#E88284;Residential with Commerical at 1st Story;95;0;0;5;0;0;0;0;RESIDENTIAL_W_1COM;"
+    case zone =="RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, MEDIUM": "1.6;0.4;12;5;3.6;5;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3.6;232;130;132;#E88284;Residential with Commerical at 1st Story;95;0;0;5;0;0;0;0;RESIDENTIAL_W_1COM;"
+    case zone =="RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, MEDIUM HIGH": "2.1;0.4;24;5;3.6;5;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3.6;232;130;132;#E88284;Residential with Commerical at 1st Story;95;0;0;5;0;0;0;0;RESIDENTIAL_W_1COM;"
+    case zone =="RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, HIGH": "2.8;0.5;36;5;3.6;5;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3.6;232;130;132;#E88284;Residential with Commerical at 1st Story;95;0;0;5;0;0;0;0;RESIDENTIAL_W_1COM;"
+    case zone =="RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, VERY HIGH": "5;0.6;50;5;3.6;5;30;15;10;7.5;7.5;7.5;5;5;3;3;3;3;3.6;232;130;132;#E88284;Residential with Commerical at 1st Story;95;0;0;5;0;0;0;0;RESIDENTIAL_W_1COM;"
+    case zone =="HOTEL": "5;1;50;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;165;158;198;#A59EC6;Hotel;0;100;0;0;0;0;0;0;OFFICE;"
+    case zone =="RAILWAY": "1;;0;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;255;255;255;#FFFFFF;Road;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="ROAD": "1;;0;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;255;255;255;#FFFFFF;Road;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="SPECIAL USE": "5;1;50;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;79;102;2;#4F6602;Special Use;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="SPORTS & RECREATION": "1;0.5;0;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;163;211;155;#A3D39B;Sports and Recreation;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="TRANSPORT FACILITIES": "1;0.5;1;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;147;153;155;#93999B;Transportation Facility;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="UTILITY": "1;0.5;1;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;147;153;155;#93999B;Utility;0;0;0;0;0;0;0;100;UTILITY;"
+    case zone =="WHITE": "5;1;50;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;245;242;242;#F5F2F2;White Site;20;20;20;20;20;0;0;0;COMMERCIAL;"
+    # XX Added to match GIS - Not in Excel!
+    case zone =="WATERBODY": "5;1;50;5;5;5;0;0;0;0;0;0;0;0;0;0;0;0;0;245;242;242;#0099FF;Water Body;20;20;20;20;20;0;0;0;UTILITY;"
+    else: ""
+
+
+/*  
+BUSINESS INDUSTRY
+BUSINESS PARK
+CIVIC & COMMUNITY INSTITUTION
+COMMERCIAL
+COMMERCIAL & RESIDENTIAL
+EDUCATIONAL INSTITUTION
+HEALTH & MEDICAL CARE
+OPEN SPACE
+PARK
+PLACE OF WORSHIP
+				RAILWAY
+	RESIDENTIAL
+ROAD
+SPORTS & RECREATION
+TRANSPORT FACILITIES
+UTILITY
+VACANT LAND
+
+tempConvertBadGISZoning(GISZone) = 
+	case GISZone == "BUSINESS / INDUSTRY": "BUSINESS INDUSTRY"
+	case GISZone == "BUSINESS PARK": "BUSINESS PARK - WHITE"
+	case GISZone == "RAILWAY": "MASS RAPID TRANSIT"
+	case GISZone == "RESIDENTIAL": 
+		20%: "RESIDENTIAL, LOW"
+		20%: "RESIDENTIAL, MEDIUM"
+		20%: "RESIDENTIAL, MEDIUM HIGH"
+		20%: "RESIDENTIAL, HIGH"
+		else: "RESIDENTIAL, VERY HIGH" 
+	case GISZone == "RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY":
+		20%: "RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, LOW"
+		20%: "RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, MEDIUM"
+		20%: "RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, MEDIUM HIGH"
+		20%: "RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, HIGH"
+		else: "RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, VERY HIGH" 
+	else: GISZone
+*/
+
+
+colorByEvalFloodRisk(value, minValue, maxValue) = colorRamp("greenToRed",reverseNormalize(normalize(value, minValue, maxValue))) 
+	
+normalize(value, minValue, maxValue) = 
+	case value <= minValue: 0
+	case value >= maxValue: 1
+	else: (value - minValue) / (maxValue - minValue) 
+
+reverseNormalize(normalizedValue) = 1 - normalizedValue 
+	
+	
+const errorColor = "#000000"

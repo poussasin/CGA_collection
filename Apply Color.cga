@@ -1,0 +1,16 @@
+/**
+ * File:    Apply Color.cga
+ * Created: 13 May 2013 19:08:02 GMT
+ * Author:  Esri
+ */
+
+version "2014.0"
+
+attr Color = "#C8C8C8"
+attr Transparency = 0.8
+
+@StartRule
+Shape -->
+	set(material.opacity, Transparency)
+	color(Color)
+	X.

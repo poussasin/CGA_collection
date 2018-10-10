@@ -1,0 +1,87 @@
+
+version "2015.0"
+
+import leftArm  : "limb.cga" 
+import rightArm : "limb.cga" 
+import leftLeg  : "limb.cga" 
+import rightLeg : "limb.cga" 
+
+@Handle(type=linear, axis=x, reference=origin, translate={0, 0.5,0.5},shape=HeadHandle^1, skin=diameterArrow)
+attr boneSize = 0.16
+
+@Handle(type=linear, shape=Mass, align=left)
+attr height = 1.85
+
+@Handle(type=color, shape=HeadHandle^1, axis=y, reference=center)
+@Color
+attr color = "#888888"
+
+@Handle(type=toggle, shape=HeadHandle^1, slip=screen, align=right)
+attr showLimbHandles = false
+
+Lot --> 
+	t (-boneSize*2.15,0,0)
+	s (boneSize*4.3, 0, boneSize )
+	extrude(height)
+	Mass
+	
+Mass -->
+	split (y)
+	{
+		~4 : Body |
+		boneSize*2 : Head 
+	}
+	
+	
+Head -->
+	t (scope.sx/2-boneSize , 0, scope.sz/2-boneSize )
+	s (boneSize*2, boneSize*2, boneSize*2)
+	HeadHandle("sphere.obj")
+	
+HeadHandle(mesh) --> 
+	i (mesh) X
+
+Body -->
+	split (x) {
+		boneSize : 	r(scopeCenter, 180, 0, 0 ) t (0, boneSize * 0.3, 0) s('1, '0.5, '1) leftArm.Arm |
+		boneSize*0.1: NIL |
+		~1 : split(y) {
+		   ~1.2 : Legs|
+		   ~1 : Torso 
+		} |
+		boneSize*0.1: NIL |
+		boneSize : r(scopeCenter, 180, 0, 0 ) t (0, boneSize * 0.3, 0) s('1, '0.5, '1) rightArm.Arm
+	}
+	
+Torso -->
+	split (y) {
+		boneSize/2 : 
+			r(scopeCenter, 180, 0, 0)
+			split(x) {
+				boneSize/2 : i("quartersphere.obj") X |
+				~1 : i("halfcylinder.obj") X |
+				boneSize/2 : r(scopeCenter, 0, 180, 0) i("quartersphere.obj") X  
+			} |
+		~1 : split(x) {
+				boneSize/2 :  i("halfcylindervert.obj") X |
+				~1 : X |
+				boneSize/2 :r(scopeCenter, 0, 180, 0) i("halfcylindervert.obj") X  
+			} |
+		boneSize/2 : 
+			split(x) {
+				boneSize/2 : i("quartersphere.obj") X |
+				~1 : i("halfcylinder.obj") X |
+				boneSize/2 : r(scopeCenter, 0, 180, 0) i("quartersphere.obj") X  
+			}
+	}
+	
+Legs -->
+	r(scopeCenter, 180, 0, 0 )
+	split (x)
+	{
+		boneSize : leftLeg.Leg |
+		~boneSize * 0.1 : NIL |
+		boneSize : rightLeg.Leg 
+	}
+	
+X --> color (color) 

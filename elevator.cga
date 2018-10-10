@@ -1,0 +1,113 @@
+/**
+ * File:    elevator.cga
+ * Created: 23 Mar 2009 14:09:34 GMT
+ * Updated: 21 October 2011
+ */
+
+version "2011.1"
+
+
+#######################
+#  Attributes
+#  (will be overwritten by master rule)
+
+@Hidden
+attr Floor_Height       = rand(5,6)
+@Hidden
+attr Protrusion_Size 	= 0
+
+
+#######################
+#  consts
+#  
+
+const elevatorRailW = rand(2,3)	
+const elevatorRailD = rand(0.4,0.6)
+const elevatorRailP = rand(0,0.2)
+const railHolderH   = rand(0.8,1.2)
+const endShape  =	
+	50%: "volumes/cube_bevel5_side.obj"
+	40%: "cube_bevel1_side.obj"
+	else: "cyl24_ver.obj"
+
+#######################
+#  Functions (from master file)
+#
+h(n)                = rint(n)*Floor_Height  	# returns height for given number of floors
+nFloors 			= rint(scope.sy/Floor_Height)
+
+
+#######################
+#  Starting Rule
+#
+
+Init -->
+	set(trim.horizontal,false) set(trim.vertical,false)
+	split(y){ (h(1)): ElevatorEnd | ~1: ElevatorMiddle | (h(1)): ElevatorEnd }
+
+ElevatorEnd -->
+	t(0,0,-Protrusion_Size *2) s('1,'1,1.5+Protrusion_Size*2) i(endShape)
+	Wall	
+	
+#######################
+# Elevator Middle Part (rails with cabin)
+#	
+	
+ElevatorMiddle -->
+	case scope.sx > 4*elevatorRailW:
+		split(x){ ~0.2: NIL | elevatorRailW: RailsWithCabin | ~1: NIL | elevatorRailW: RailsWithCabin | ~0.2: NIL }
+	else:
+		split(x){ ~1: NIL | elevatorRailW: RailsWithCabin | ~1: NIL }
+	
+RailsWithCabin -->
+	split(x){ elevatorRailD: Rail | ~1: Cabins | elevatorRailD: Rail }
+	RailHolders
+
+Rail -->
+	s('1,'1,elevatorRailD) color("#111111") t(0,0,elevatorRailP) primitiveCube()
+
+RailHolders -->
+	case scope.sy > 30:
+		split(y){ ~1: RailHolders | Floor_Height: RailHolder | (h(nFloors*rand(.4,.6))): NIL }
+	else: 
+		split(y){ scope.sz*rand(2,4): RailHolder | ~1 : NIL }
+
+RailHolder -->	
+	split(x){ elevatorRailD: s('0.5,'1,'1) center(x) HolderElement 
+			| ~1: NIL 
+			| elevatorRailD: s('0.5,'1,'1) center(x) HolderElement }
+
+HolderElement -->
+	s('1,railHolderH,elevatorRailP+ Protrusion_Size ) t(0,-railHolderH*0.5,elevatorRailP- Protrusion_Size )
+	color("#111111") primitiveCube()
+
+
+#######################
+# Elevator Cabins
+#
+
+const cabinShape = 
+	30%: "volumes/cube_slanted_faces1.obj"
+	else: "cyl24_ver.obj"
+		
+Cabins -->
+	case scope.sy > 150:
+		split(y){'rand(0.1,0.4): NIL
+				| (h(1)*1.1)   : CabinConstruction
+				| ~1           : NIL
+				| (h(1)*1.1)   : CabinConstruction
+				|'rand(0.1,0.4): NIL }
+	else:
+		split(y){'rand(0.1,0.7): NIL
+				| (h(1)*1.1)   : CabinConstruction
+				| ~1           : NIL }		
+				
+CabinConstruction -->
+	set(trim.horizontal,false) set(trim.vertical,false) 
+	s('1,'1,elevatorRailD*2) primitiveCube() Cabin
+	t(0,0,elevatorRailD*1.5) s('3,'1.1,2.5) center(x) i(cabinShape) Cabin
+	
+Cabin -->
+	setupProjection(0,scope.xy,scope.sx,scope.sy*8) projectUV(0)					# colormap texture projection
+	texture("misc/glas_8x8tiles_512x256.png")
+

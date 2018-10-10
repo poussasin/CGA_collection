@@ -1,0 +1,120 @@
+/**
+ * File:    Building_Interiors_BETA.cga
+ * Created: 22 Apr 2015 17:16:51 GMT
+ * Author:  chri7180
+ */
+
+version "2015.0"
+
+const materialDirectory = "3D_City_Design_Assets/Material_Library/"
+const floorPath = materialDirectory + "FloorTextures/"
+
+#@Hidden
+const ShowStructure = false
+
+@Group("INTERIOR") 
+@Range(0.2,1)
+attr Slab_Thickness = 0.5
+@Range("Wood Endless Plywood.jpg", "Wood Floor Clean.jpg", "Wood Floor Clean Light.jpg", "Wood Floor Clean Square.jpg", "Wood Particle Board.jpg", "Wood Planks Aged.jpg", "Wood Planks New.jpg")
+attr Floor_Texture = "Wood Floor Clean.jpg"
+
+# These attributes are named without the underscore seen in the importing rule, so that no inheritance will occur.
+@Hidden
+attr massType = ""
+@Hidden
+attr floorIndex = 0
+@Hidden
+attr floorCount = 0
+@Hidden
+attr floorHeight = 0
+
+const faceCollisionClearance = 0.5
+
+Floor(__massType, __floorIndex, __floorCount, __floorHeight) -->
+	set(massType, __massType)
+	set(floorIndex, __floorIndex)
+	set(floorCount, __floorCount)
+	set(floorHeight, __floorHeight)
+	rotateScope(180,0,0)
+	t(0,0,-Slab_Thickness)
+	report("GFA", geometry.area)
+	offset(-faceCollisionClearance)
+	comp(f) {inside: Slab}
+
+Ceiling(__massType, __floorIndex, __floorCount, __floorHeight) -->
+	set(massType, __massType)
+	set(floorIndex, __floorIndex)
+	set(floorCount, __floorCount)
+	set(floorHeight, __floorHeight)
+	#rotateScope(180,0,0)
+	offset(-faceCollisionClearance)
+	comp(f) {inside: Structure}
+
+
+
+Slab --> color("#cdaf8a") Slab. 
+	#extrude(Slab_Thickness)
+	#comp(f){top: TextureFloor | bottom: Ceiling | side: SlabSide}
+
+const Floor_Texture_Scale = 4
+
+TextureFloor -->
+	setupProjection(0, scope.xy, Floor_Texture_Scale, Floor_Texture_Scale)
+	projectUV(0)
+	texture(floorPath + Floor_Texture)	
+	
+SlabSide --> color(1,1,1) X.
+
+Ceiling --> color(1,1,1) X.
+	
+const structuralSetback = 0.5
+const ColumnDiameter = 0.6 
+const ColumnSpacing = 10 # XX change this to be driven from facade bay width? 
+columnHeight = floorHeight - Slab_Thickness
+
+Structure --> 
+	case ShowStructure && (massType == "Ground" || massType == "Upper"):
+		#print( "ShowStructure = " + ShowStructure)
+		#print( "floorIndex = " + floorIndex + " mass = " + massType)
+		offset(-structuralSetback)
+		comp(f){inside: StructureRing}
+	else:  NIL
+
+StructureRing --> 
+	t(0,0,Slab_Thickness) 
+	offset(-ColumnDiameter)
+	comp(f){border: ColumnArrangement}
+
+ColumnArrangement -->
+	split(x) {{ColumnDiameter: Column | ~ColumnSpacing: NIL}* | ColumnDiameter: NIL}
+	
+Column -->
+	# Make sure it will be aligned right: 
+	alignScopeToAxes(y)
+	# Insert pre-made circle asset.
+	i("Circle01.obj")
+	# Cleanup ugly Obj model.
+	cleanupGeometry(edges, 0)
+	# Adjust this extrusion height based on context:
+	extrude(-columnHeight)
+
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+
+	
+	
+	

@@ -1,0 +1,141 @@
+/**
+ * File:    Building_Roofs_BETA.cga
+ * Created: 21 Apr 2015 22:45:01 GMT
+ * Author:  chri7180
+ */
+
+version "2015.0"
+
+#import SolarPanels:"rules/BuildingsBETA/Referenced/SolarPanels.cga"
+
+const materialDirectory = "assets/3D_City_Design_Assets/Material_Library/"
+
+
+@Group("ROOFS",1) @Order(10)
+@Range ("Green Roof", "Gravel", "Flat Metal 1", "Flat Metal 2", "Flat Metal 3", "Flat Metal 4", "Flat Metal 5", "Flat Metal 6", "Flat Metal 7", "Flat Metal 10", "Flat Standard 1", "Flat Standard 2", "Flat Standard 3", "Flat Standard 4", "Flat Standard 5", "Flat Standard 6", "Flat Standard 7", "Flat Standard 8", "Flat Standard 9", "Flat Standard 10")
+attr Flat_Roof_Texture =
+	5%: "Green Roof"
+	5%: "Gravel"
+	5%: "Flat Metal 1"
+	5%: "Flat Metal 2"
+	5%: "Flat Metal 3"
+	5%: "Flat Metal 4"
+	5%: "Flat Metal 5"
+	5%: "Flat Metal 6"
+	5%: "Flat Metal 7"
+	5%: "Flat Metal 10"
+	5%: "Flat Standard 1"
+	5%: "Flat Standard 2"
+	5%: "Flat Standard 3"
+	5%: "Flat Standard 4"
+	5%: "Flat Standard 5"
+	5%: "Flat Standard 6"
+	5%: "Flat Standard 7"
+	5%: "Flat Standard 8"
+	5%: "Flat Standard 9"
+	else: "Flat Standard 10" 
+
+@Group("ROOFS") @Order(20)
+attr Flat_Roof_Add_Parapet = false 
+ 
+@Group("ROOFS") @Order(30)
+@Range ("Shingle Black", "GAF Elk WeatherMax Charcoal", "Barrel Tile Brown", "Barrel Tile Red Mixed", "Camelot Shingle", "Mesa Shingle Brown", "Standard Dura Shingle", "Standard Shingle", "Terracotta Tile Dark Brown", "Terracotta Tile Red", "Weathered Shingle")
+attr Sloped_Roof_Texture = 	
+	10%: "GAF Elk WeatherMax Charcoal"
+	10%: "Barrel Tile Brown"
+	10%: "Barrel Tile Red Mixed"
+	10%: "Camelot Shingle"
+	10%: "Mesa Shingle Brown"
+	10%: "Standard Dura Shingle"
+	10%: "Standard Shingle"
+	10%: "Terracotta Tile Dark Brown"
+	10%: "Terracotta Tile Red"
+	else: "Weathered Shingle"
+
+@Group("ROOFS") @Order(40)
+@Range(0.1,5.0)
+attr Sloped_Roof_Texture_Scale = 2	
+
+
+
+# Here is example of the angle check that could be in here:
+# geometry.angle(maxSlope) > 10 && geometry.angle(maxSlope) < 88
+
+SlopedRoofShape(type) -->
+	RoofTextureSloped
+
+TopRoofShape(type) -->
+	case type == "Parapet":
+		X.
+	case type == "Usable":
+		X.
+	case type == "Machinery":
+		X.
+	else: 
+		RoofTextureFlatParapetCheck
+
+const parapetThickness = 0.5
+const parapetDepth = 1
+const parapetTopColor = "#555555"
+#const parapetMinimumArea = 700
+ 
+# XX Logic for parapet area test here left incomplete till later.
+RoofTextureFlatParapetCheck -->
+	case Flat_Roof_Add_Parapet: # && geometry.area > parapetMinimumArea:
+		offset(-parapetThickness)
+		comp(f){border: ParapetTop | inside: ParapetSink}
+	else:
+		RoofFlatEdge
+
+ParapetTop -->
+	color(parapetTopColor)
+
+ParapetSink -->
+	t(0,0,-parapetDepth)
+	extrude(parapetDepth)
+	comp(f){top: NIL 
+		| bottom: reverseNormals RoofFlatEdge
+		| side: reverseNormals color(parapetTopColor) X.}
+
+RoofFlatEdge -->
+	# Make a tiny black edge to make it look better.
+	offset(-0.05) 
+	comp(f){border: color(0,0,0) X. | inside: RoofTextureFlat}
+
+RoofTextureFlat -->
+	alignScopeToGeometry(zUp, any, longest)
+	setupProjection(0, scope.xy, scope.sx, scope.sy) 
+	projectUV(0)
+	texture(materialDirectory + "FlatRoof/" + Flat_Roof_Texture + ".jpg")	
+	
+RoofTextureSloped -->
+	alignScopeToGeometry(yUp, any, world.lowest)
+	#setupProjection(0,scope.xz, ~roofTextureSize, ~roofTextureSize)
+	setupProjection(0,scope.xz, ~roofTextureSize/Sloped_Roof_Texture_Scale, ~roofTextureSize/Sloped_Roof_Texture_Scale)
+	projectUV(0)
+	texture(materialDirectory + "SlopedRoof/" + Sloped_Roof_Texture + ".jpg")
+
+const roofTextureSize = rand(4,12)
+
+		
+
+
+
+###############################################################################
+
+dirtmapTexture = fileRandom(materialDirectory + "DirtMap/Dirt*.jpg")
+
+AddDirtMap -->
+	alignScopeToGeometry(yUp, any, world.lowest)
+	setupProjection(2,scope.xz,'1,'1)
+	projectUV(2)
+	rotateScope(2,rand(360),0)
+	set(material.dirtmap, dirtmapTexture)
+
+
+
+
+
+
+
+

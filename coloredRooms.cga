@@ -1,0 +1,187 @@
+/**
+ * File:    coloredRooms.cga
+ * Created: 3 Mar 2017 15:05:54 GMT
+ * Author:  Esri R&D Center Zurich
+ */
+
+version "2017.0"
+
+
+// ******************************
+// Attributes
+// ******************************
+
+@Handle(shape=InsideRoom^1, type=color, repeat=none)
+@Color
+attr light_color = "#ffffff"
+
+
+// ******************************
+// Variables and Functions
+// ******************************
+
+const hexagon_width = 40
+
+const room_width = 10
+const room_height = 0.5*room_width
+const wall_thickness = 0.1
+const light_width = 0.5
+const light_height = 2
+const lightBase_height = 0.05
+const lightPole_diameter = 0.05
+const lightPole_height = 0.8*light_height
+const lightShade_angle = 70
+const lightShade_height = light_height - lightBase_height - lightPole_height
+const lightCone_height = 0.5*light_width*tan(lightShade_angle)
+
+const thres = 40	// Just Noticeable Difference (JND) units
+
+room_tex(room_num) = "Textures/coloredDots" + str(room_num) + ".png"
+
+getAnswer(room_num) =
+	case room_num==0:
+		"#ffff00"
+	case room_num==1:
+		"#ff0000"
+	case room_num==2:
+		"#00ffff"
+	case room_num==3:
+		"#00ff00"
+	case room_num==4:
+		"#0000ff"
+	case room_num==5:
+		"#ff00ff"
+	else:
+		"#ffffff"
+		
+checkAnswer(hexGuess, hexAnswer) = dist(convertHexToL(hexGuess),
+										convertHexToA(hexGuess),
+										convertHexToB(hexGuess),
+										convertHexToL(hexAnswer),
+										convertHexToA(hexAnswer),
+										convertHexToB(hexAnswer)) < thres
+
+dist(l1, a1, b1, l2, a2, b2) = sqrt( (l2-l1)*(l2-l1) + (a2-a1)*(a2-a1) + (b2-b1)*(b2-b1) )
+
+convertHexToL(hex) = convertRGBToL(colorHexToR(hex), colorHexToG(hex), colorHexToB(hex))
+convertHexToA(hex) = convertRGBToA(colorHexToR(hex), colorHexToG(hex), colorHexToB(hex))
+convertHexToB(hex) = convertRGBToB(colorHexToR(hex), colorHexToG(hex), colorHexToB(hex))
+
+convertRGBToL(r1, g1, b1) = convertXYZToL(convertRGBToX(r1, g1, b1), convertRGBToY(r1, g1, b1), convertRGBToZ(r1, g1, b1))
+convertRGBToA(r1, g1, b1) = convertXYZToA(convertRGBToX(r1, g1, b1), convertRGBToY(r1, g1, b1), convertRGBToZ(r1, g1, b1))
+convertRGBToB(r1, g1, b1) = convertXYZToB(convertRGBToX(r1, g1, b1), convertRGBToY(r1, g1, b1), convertRGBToZ(r1, g1, b1))
+
+convertXYZToL(x, y, z) = 116*f_util(y) - 16
+convertXYZToA(x, y, z) = 500*(f_util(x/0.95047) - f_util(y))
+convertXYZToB(x, y, z) = 200*(f_util(y) - f_util(z/1.08883))
+
+const delta = 6/29
+f_util(x) =
+	case x>pow(delta, 3):	pow(x, 1/3)
+	else:					(x/(3*delta*delta)) + (4/29)
+
+convertRGBToX(r1, g1, b1) = 0.4124*convertCToCLinear(r1) + 0.3576*convertCToCLinear(g1) + 0.1805*convertCToCLinear(b1)
+convertRGBToY(r1, g1, b1) = 0.2126*convertCToCLinear(r1) + 0.7152*convertCToCLinear(g1) + 0.0722*convertCToCLinear(b1)
+convertRGBToZ(r1, g1, b1) = 0.0193*convertCToCLinear(r1) + 0.1192*convertCToCLinear(g1) + 0.9505*convertCToCLinear(b1)
+
+convertCToCLinear(c) =
+	case c <= 0.04045:	c/12.92
+	else:				pow((c+0.055)/(1.055), 2.4) 
+		
+		
+// ******************************
+// Start Rule
+// ******************************
+
+Lot -->
+	s(hexagon_width, 0, hexagon_width)
+	center(xz)
+	primitiveCylinder(6)
+	comp(f) { side: Room(comp.index) }
+	CreateOccluderTest
+	report("ProgressTotal", 1)
+	
+
+// ******************************
+// Colored Room
+// ******************************
+
+Room(room_num) -->
+	s(room_width, room_height + wall_thickness, room_width)
+	center(x)
+	primitiveCube
+	comp(f) { side:   Face.
+			| bottom: Bottom.
+					  reverseNormals
+					  offset(-wall_thickness)
+					  comp(f) { border= t(0, 0, room_height + wall_thickness) Face.
+					  		  | inside: extrude(room_height)
+										t(0, wall_thickness, 0)
+					  		  			InsideRoom(room_num) } }
+	TestRoom(room_num)
+			
+					  
+InsideRoom(room_num) -->
+	color(light_color)
+	Light
+	comp(f) { bottom: Floor.
+			| side:   reverseNormals()
+					  rotateScope(0,180,0)
+					  Wall(room_num) }
+			
+Wall(room_num) -->
+	setupProjection(0, scope.xy, '1, '1)
+	texture(room_tex(room_num))
+	projectUV(0)
+	
+Light -->
+	s(light_width, light_height, light_width)
+	center(xz)
+	LightBase
+	LightPole
+	LightShade
+	
+LightBase -->
+	s('1, lightBase_height, '1)
+	primitiveCylinder
+	color("#000000")
+	
+LightPole -->
+	t(0, lightBase_height, 0)
+	s(lightPole_diameter, lightPole_height, lightPole_diameter)
+	center(xz)
+	color("#000000")
+	
+LightShade -->
+	t(0, lightBase_height + lightPole_height, 0)
+	s('1, lightCone_height, '1)
+	primitiveCone
+	split(y) { lightShade_height: LightShade. }	
+			
+
+// ******************************
+// Check Answer
+// ******************************
+
+CreateOccluderTest -->
+	s('1, room_height, '1)
+	TestCorrect
+	
+TestCorrect -->
+	case touches(intra, "Check"):
+		NIL
+	else:
+		report("Progress", 1)
+		report("Code.Colors", 1)
+		NIL
+
+TestRoom(room_num) -->
+	case checkAnswer(light_color, getAnswer(room_num)):
+		t(0, room_height + 1, 0)
+		label("Check")
+		NIL
+	else:
+		label("Check")
+		NIL
+	
+		

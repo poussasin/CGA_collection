@@ -1,0 +1,154 @@
+/**
+ * File:    cat.cga
+ * Created: 14 Mar 2017 11:11:04 GMT
+ * Author:  Esri R&D Center Zurich
+ */
+
+version "2017.0"
+
+
+@Hidden
+import Text:"/ESRI.lib/rules/General/Text.cga"
+
+
+// ******************************
+// Attributes
+// ******************************
+
+@Handle(shape=Handle_Action, type=selector, align=top, occlusion=false)
+@Range("No action", "Pet the cat")
+attr action = "No action"
+
+@Hidden
+attr text1 = ""
+@Hidden
+attr text2 = ""
+
+
+// ******************************
+// Variables and Functions
+// ******************************
+
+const text_size = 0.05
+const textBox_width = 0.3
+const textBox_height = 0.25
+
+const body_width = 0.46
+const body_height = 0.18
+const body_depth = 0.2
+const leg_height = 0.07
+const leg_diameter = 0.02
+const foot_height = 0.02
+const head_diameter = 0.1
+const tail_width = 0.14
+const tail_height = 0.17
+const tail_depth = 0.015
+const ear_width = 0.024
+const ear_height = 0.015
+
+const cat_color = "#ff8f2d"
+
+
+// ******************************
+// Start Rule
+// ******************************
+
+Cat -->
+	color(cat_color)
+	s(body_width, 0, body_depth)
+	center(xz)
+	Mass
+	Body
+	Legs
+	Head
+	Tail
+	DisplayText
+
+
+// ******************************
+// Rules
+// ******************************
+
+Mass -->
+	extrude(leg_height + body_height + 0.2*head_diameter)
+	Handle_Action
+	
+Handle_Action -->
+	NIL
+		
+Body -->
+	t(0, leg_height - body_height, 0)
+	s('1, 2*body_height, '1)
+	primitiveSphere
+	split(y) { ~1: NIL
+			 | ~1: Body. }
+	
+Legs -->
+	s(leg_diameter, leg_height, leg_diameter)
+	center(xz)
+	primitiveCylinder
+	[ t(-0.4*body_width, 0, -0.2*body_depth)
+	  Leg ]
+	[ t(-0.4*body_width, 0, 0.2*body_depth)
+	  Leg ]
+	[ t(0.4*body_width, 0, -0.2*body_depth)
+	  Leg ]
+	[ t(0.4*body_width, 0, 0.2*body_depth)
+	  Leg ]
+	  
+Leg -->
+	split(y) { 0.5*foot_height: Foot
+			 | ~1: LegPart. }
+			 
+Foot -->		 
+	s('1.4, '2, '1.3)
+	center(z)
+	primitiveSphere
+	
+Head -->
+	t(scope.sx - head_diameter, leg_height + body_height - head_diameter, 0)
+	s(head_diameter, head_diameter, head_diameter)
+	center(z)
+	primitiveSphere
+	HeadPart.
+	Ears
+	
+Ears -->
+	s(0.5*ear_width, ear_height, ear_width)
+	center(xz)
+	primitiveCone
+	[ t(0.1*head_diameter, 0.9*head_diameter, -0.2*head_diameter)
+	  r(scopeCenter, -10, 0, 0)
+	  Ear. ]
+	[ t(0.1*head_diameter, 0.9*head_diameter, 0.2*head_diameter)
+	  r(scopeCenter, 10, 0, 0)
+	  Ear. ]
+	
+Tail -->
+	t(-0.7*tail_width, 0.5*tail_height, 0)
+	s(tail_width, tail_height, tail_depth)
+	center(z)
+	primitiveCube
+	rotateScope(90, 0, 0)
+	primitiveCylinder
+	comp(f) { top: NIL
+			| bottom: NIL
+			| front: NIL
+			| all= extrude(vertex.normal, tail_depth) TailPart. }
+	
+DisplayText -->
+	case action=="Pet the cat":
+		t(0, leg_height + body_height + 0.2*head_diameter + 0.04 + textBox_height, '0.5)
+		s(textBox_width, 0, textBox_height)
+		center(x)
+		r(90, 0, 0)
+		split(z) { ~1: PrintText(text1)
+				 | ~1: PrintText(text2) }
+	else:
+		NIL
+	
+PrintText(textStr) -->
+	set(Text.Text, textStr)
+	set(Text.Size, text_size)
+	Text.Generate
+

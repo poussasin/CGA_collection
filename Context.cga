@@ -1,0 +1,39 @@
+/**
+ *
+ Authors:
+ Matthias Buehler, Esri R&D Center Zurich
+ Seiler & Seiler, http://seilerseiler.com
+ */
+
+version "2014.1"
+
+
+attr floors = 0
+attr floorDelta = rint(rand(-1,1))
+const floorheight = 3
+
+@Range("Assembly","Agricultural","Educational","Industry","Mercantile","Office","Public","Residential","Service","Storage","Transport","Utility","Other","Unknown")
+attr usage = "Residential"
+
+buildingUsageColor (buildingUsage) =
+	case buildingUsage == "Assembly"				: "#f8c283"
+	case buildingUsage == "Agricultural"			: "#cccc00"
+	case buildingUsage == "Educational"				: "#ad89ba"
+	case buildingUsage == "Industry"				: "#7a85c8"
+	case buildingUsage == "Mercantile"				: "#777777"
+	case buildingUsage == "Office"					: "#B884D5"
+	case buildingUsage == "Public"					: "#BCD4D5"
+	case buildingUsage == "Residential"				: "#bb4646"
+	case buildingUsage == "Service"					: "#d08c6e"
+	case buildingUsage == "Storage"					: "#444444"
+	case buildingUsage == "Transport"				: "#444444"
+	case buildingUsage == "Utility"					: "#444444"
+	case buildingUsage == "Other"					: "#444444"
+	case buildingUsage == "Unknown"					: "#444444"
+	else /*error*/									: "#ffffff"
+
+@Startrule
+Context -->
+	extrude((floors + floorDelta)*floorheight)
+	color(buildingUsageColor(usage))
+

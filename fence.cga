@@ -1,0 +1,103 @@
+/**
+ * File:    fence.cga
+ * Created: 20 Apr 2017 15:05:40 GMT
+ * Author:  Esri R&D Center Zurich
+ */
+
+version "2017.0"
+
+
+// ******************************
+// Attributes
+// ******************************
+
+@Group("Dimensions", 0)
+
+@Order(1)
+attr post_width = 0.1
+@Order(2)
+attr post_height = 1
+@Order(3)
+attr middle_width = 1
+@Order(4)
+attr middle_depth = 0.02
+@Order(5)
+attr middleStart_height = 0.04
+@Order(6)
+attr postMiddleDiff_height = 0.04
+
+@Group("Colors", 1)
+
+@Order(1)
+attr post_color = "#ffffff"
+@Order(2)
+attr middle_color = "#ffffff"
+@Order(3)
+attr middle_opacity = 1
+
+
+// ******************************
+// Variables
+// ******************************
+
+const fence_depth = post_width
+const fence_height = post_height
+const middle_height = post_height - middleStart_height - postMiddleDiff_height
+
+
+// ******************************
+// Start Rule
+// ******************************
+
+FenceOnPolygon -->
+	offset(-fence_depth, border)
+	comp(f) { all: PolygonSide_CreateGhost }
+	
+	
+// ******************************
+// Rules
+// ******************************
+
+PolygonSide_CreateGhost -->
+	extrude(fence_height)
+	comp(f) { front: TestPolygonSide }
+	
+TestPolygonSide -->
+	case inside:
+		extrude(fence_depth)
+		rotateScope(-90, 0, 0)
+		t(0, 0, -fence_depth)
+		s(post_width, '1, '1)
+		NoFence_FirstPost
+	else:
+		extrude(fence_depth)
+		rotateScope(-90, 0, 0)
+		t(0, 0, -fence_depth)
+		label("Fence")
+		PolygonSide
+		
+PolygonSide -->
+	split(x) { { post_width:    Post
+			   | ~middle_width: Middle }*
+			 | post_width: EndPost }
+
+Post -->
+	color(post_color)
+
+Middle -->
+	t(0, middleStart_height, 0)
+	s('1, middle_height, middle_depth)
+	center(z)
+	color(middle_color)
+	set(material.opacity, middle_opacity)
+	
+EndPost -->
+	NIL
+	
+NoFence_FirstPost -->
+	case inside(intra, "Fence"):
+		Post
+	else:
+		NIL
+	
+	

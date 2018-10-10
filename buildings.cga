@@ -1,0 +1,831 @@
+version "2016.0"
+
+@Hidden
+import Advertisements 	: "advertisments.cga" (Level_of_Detail = Level_of_Detail, Billboard_Probability = Create_Billboards)
+@Hidden
+import Antenna       	: "antenna.cga" (Level_of_Detail = Level_of_Detail, Building_Height = Building_Height, Antenna_Probability = Create_Antennas)
+@Hidden
+import Elevator      	: "elevator.cga" (Protrusion_Size = Protrusion_Size, Floor_Height = Floor_Height)
+@Hidden
+import Flatroof			: "flatroof.cga" (Create_Props = !LOD_low, Floor_Height = Floor_Height)
+@Hidden
+import Plant_Distributor: "/ESRI.lib/rules/Plants/Plant_Distributor.cga" (Plant.Representation = getPlantRep)
+
+
+###
+### Control Attributes (set by user or mapped)
+###
+
+@Group("Main Layout Parameters",1) 
+
+@Order(1) @Description("Force a park on this log, by default a park is placed with prob of 70%")
+attr Create_Park		= p(0.7)
+@Order(2) @Description("If false, building is not generated (depends on densityFactor)")
+attr Create_Building 	= p(0.8+densityFactor*0.2)  # a mapped function of the densityFactor desides if or if not a building will appear
+@Order(3)
+attr Create_Ground = true
+
+@Group("Main Building Parameters",2) 
+
+@Order(2) @Range("Low","Medium","High")
+attr Level_of_Detail 	= getLevelOfDetail
+@Order(3.1) @Range(50,1500) @Description("Depends on densityFactor and lot area (simple heuristic)")
+attr Building_Height 	= getRandomBuildingHeight							
+@Order(3.2) @Range(0.01,1.0) @Description("Stochastic Building Height Adjustment: max attenuation")
+attr BH_Attenuation_Max = 0.15
+@Order(3.2) @Range(0.01,1.0) @Description("Stochastic Building Height Adjustment: min attenuation")
+attr BH_Attenuation_Min = 0.33
+@Order(3.3) @Range(0.1,1.0)  @Description("Stochastic Building Height Adjustment: prob of attenuation")
+attr BH_Attenuation_Prop = 0.7
+@Order(4) @Range(0,35)
+attr Volume_ID 			= getRandomVolumeID							
+@Order(5) @Range(1,20)
+attr Facade_ID 			= ceil(rand(20))
+@Order(6) @Color
+attr Facade_Color 		= getRandomFacadeColor
+
+@Group("Detailed Building Parameters",3) 
+
+@Order(1)
+attr Create_HoverEngine = false
+@Order(1.1)
+attr HoverEngine_Size = 40
+@Order(2) @Range(None=0, Few=0.25, Normal=0.5, Many=0.75, Most=1.0)
+attr Create_Antennas 	= 10%: 0.75 20%: 0.5 40%: 0.25 else: 0
+@Order(3) @Range(None=0, Few=0.25, Normal=0.5, Many=0.75, Most=1.0)
+attr Create_Billboards 	= 20%: 1.0 40%: 0.75 20%: 0.5 else: 0
+@Order(4) @Range(None=0, Few=0.25, Normal=0.5, Many=0.75, Most=1.0)
+attr Create_Elevators 	= case LOD_low: 0 else: 20%: 1.0 40%: 0.75 20%: 0.5 else: 0
+@Order(5) @Range(None=0, Few=0.25, Normal=0.5, Many=0.75, Most=1.0)
+attr Create_Balconies 	= case LOD_low: 0 else: 10%: 1.0 20%: 0.75 30%: 0.5 else: 0
+@Order(6) @Range(None=0, Few=0.25, Normal=0.5, Many=0.75, Most=1.0)
+attr Create_People 		= case LOD_low: 0 else: 10%: 1.0 20%: 0.75 30%: 0.5 else: 0
+@Order(7) @Range(None=0, Few=0.25, Normal=0.5, Many=0.75, Most=1.0)
+attr Create_Green 		= case LOD_low: 0 else: 10%: 1.0 20%: 0.75 30%: 0.5 else: 0
+@Order(8) @Range("Open","Closed")
+attr Balcony_Type 		= 30%: "Open" else: "Closed"			
+
+@Group("Facade Appearance",3) 
+
+@Order(1) @Range(0,10)
+attr Protrusion_Size 		= getRandomProtrusionSize
+@Order(2) @Range(4,7)
+attr Floor_Height 			= rand(5,6)
+@Order(3) @Range(1,5)
+attr Tile_Width 			= rand(2.2,3.7)
+
+@Group("Map Driven Attributes") @Range(0,1)
+
+@Order(1)
+attr densityFactor   		= rand(0,1)	# overwritten by controlmap
+
+
+###
+### Constants for Construction
+###
+
+const bumpDepth      = -1
+const glassSpecGain  = 0.8  
+const glassReflGain  = 20%: 0.5 50%:0.3 else: 0.1  
+const glassShininess = 20 
+
+const balconyD 		= case Create_Balconies>0: rand(1,3)	else: 0
+
+const railingH = 1.5 # railing height
+const railingD = 0.5 # railing depth
+const railingP = 0.4 # railing projection (in relation to mass below)
+
+
+###
+### Helpers
+###
+
+const buildingHeightInternal = 
+	case p(BH_Attenuation_Prop):
+		Building_Height * rand(BH_Attenuation_Max, BH_Attenuation_Min)
+	else:
+		Building_Height
+	
+@Hidden
+attr mapLOD = 0.0
+
+getLevelOfDetail =
+	case mapLOD > 0.66: "High"
+	case mapLOD > 0.33: "Medium"
+	else: "Low"
+
+LOD_high = (Level_of_Detail == "High")
+LOD_mid  = (Level_of_Detail == "Medium")
+LOD_low  = (Level_of_Detail == "Low")
+getPlantRep =
+	case LOD_high: "Model"
+	else: "Fan"
+
+getRandomVolumeID =
+	case isRect && p(0.8) && !isThin: -1 else:
+	1%:0 3%:1 3%:2 3%:3 3%:4 3%:5 2%:6 2%:7 4%:8 3%:9 3%:10 3%:11 2%:12 2%:13 2%:14 2%:15 1%:16 1%:17 2%:18 3%:19 3%:20 2%:21 1%:22 1%:23 1%:24 2%:25 3%:26 3%:27 3%:28 4%:29 5%:30 3%:31 4%:32 1%:33 1%:34 else:35
+
+getRandomBuildingHeight = # determines the building height according to the densityFactor and lot area
+	case geometry.area > 8000: rand(0.7,1.2)*(100+densityFactor*900) 
+	case geometry.area > 5000: rand(0.5,1.0)*(100+densityFactor*900) 
+	else                     : rand(0.3,0.7)*(100+densityFactor*900)
+	
+getRandomProtrusionSize =
+	case geometry.area > 1000:  80%: rand(1,2.5) else: rand(3,6)
+	else                     :  rand(0.7,1.7) 
+
+getRandomFacadeColor = 
+# oranges
+	2%	: "#e9b48b"
+	2%	: "#ebb98d"
+	2%	: "#ecc195"
+	2%	: "#eecfb4"
+# yellows	
+	2%	: "#f0d7aa"
+	2%	: "#f1d8ac"
+	2%	: "#f2dbad"
+	2%	: "#f5dfad"
+	2%	: "#fdf0d0"
+	2%	: "#f3e7cb"
+# greens
+	2%	: "#a5c5b5"
+# blues	
+	2%	: "#bed4d7"
+	2%	: "#9592b1"
+	2%	: "#989cbe"
+# beiges/greys
+	2%	: "#dcd0b5"
+	2%	: "#e9e5d6"
+	2%	: "#e1e3e2"
+	2%	: "#8c99a4"
+# browns 
+	2%	: "#a38c59"
+	2%	: "#a7958b"
+	2%	: "#6f513c"
+# white
+	else: "#ffffff"
+
+volume =  # we choose to make this via an array so that the user can conveniently select a number in the Inspector window (instead of writing the filepath) 
+	case Volume_ID ==  0: "volumes/taper.obj"
+	case Volume_ID ==  1: "volumes/cube_crossed_edges.obj"
+	case Volume_ID ==  2: "volumes/cube_slanted_edges1.obj"
+	case Volume_ID ==  3: "volumes/cube_slanted_edges2.obj"
+	case Volume_ID ==  4: "volumes/cube_slanted_faces2.obj"
+	case Volume_ID ==  5: "volumes/cube_slanted_faces1.obj"
+	case Volume_ID ==  6: "volumes/cube_twisted_left.obj"
+	case Volume_ID ==  7: "volumes/cube_twisted_right.obj"
+	case Volume_ID ==  8: "volumes/cube_translated1.obj"
+	case Volume_ID ==  9: "volumes/cube_translated2.obj"
+	case Volume_ID == 10: "volumes/cube_translated3.obj"
+	case Volume_ID == 11: "volumes/cube_translated4.obj"
+	case Volume_ID == 12: "volumes/prism2.obj"
+	case Volume_ID == 13: "volumes/prism3.obj"
+	case Volume_ID == 14: "volumes/taper_steps1.obj"
+	case Volume_ID == 15: "volumes/taper_steps2.obj"
+	case Volume_ID == 16: "volumes/cyl8_ver.obj"
+	case Volume_ID == 17: "volumes/cyl8_ver_mod1.obj"
+	case Volume_ID == 18: "volumes/cyl8_ver_bevel.obj"
+	case Volume_ID == 19: "volumes/cyl24_ver.obj"
+	case Volume_ID == 20: "volumes/cyl24_ver_taper.obj"
+	case Volume_ID == 21: "volumes/cyl24_ver_bevel.obj"
+	case Volume_ID == 22: "volumes/u_shape.obj"
+	case Volume_ID == 23: "volumes/u_shape_mod2.obj"
+	case Volume_ID == 24: "volumes/u_shape_mod1.obj"
+	case Volume_ID == 25: "volumes/cube_bevel1_top.obj"
+	case Volume_ID == 26: "volumes/cube_bevel1_side.obj"
+	case Volume_ID == 27: "volumes/cube_bevel1_side_top.obj"
+	case Volume_ID == 28: "volumes/cube_bevel1_side_top_mod.obj"
+	case Volume_ID == 29: "volumes/cube_bevel5_side.obj"
+	case Volume_ID == 30: "volumes/cube_bevel5_top.obj"
+	case Volume_ID == 31: "volumes/cube_bevel5_top_mod3.obj"
+	case Volume_ID == 32: "volumes/cube_bevel5_top_mod4.obj"
+	case Volume_ID == 33: "volumes/cube_bevel5_top_mod1.obj"
+	case Volume_ID == 34: "volumes/cube_bevel5_top_mod2.obj"
+	else                : "volumes/cube_bevel5_side_top.obj"
+
+moduloWallTextureNbr = 1+( Facade_ID -1+100)%20
+getWallTex(subType,mapType) =
+	case mapType == "opacity" && !LOD_high: ""
+	case subType == 0: "facades/facade"+moduloWallTextureNbr+"_"+mapType+".png"
+	else             : "facades/facade"+moduloWallTextureNbr+"win_"+mapType+".png"
+
+h(n)        		= rint(n)* Floor_Height  							# returns height for given number of floors
+hMod				= hMod(1)											# returns current height modulo floorheight
+hMod(f)   			= rint(scope.sy*f/Floor_Height)*Floor_Height  		# returns fraction of current height modulo floorheight
+getTileWidth(w)		= case w >= Tile_Width : w/rint(w/ Tile_Width ) else : scope.sx/ceil(scope.sx/ Tile_Width +0.0001)
+		
+isVeryThin 	= scope.sx*4 < scope.sz || scope.sz*4 < scope.sx
+isThin 		= scope.sx*3 < scope.sz || scope.sz*3 < scope.sx
+rand03 		= rand(0.0,0.3)
+rand48 		= rand(0.4,0.8)
+rand68 		= rand(0.6,0.8)
+rand79 		= rand(0.7,0.9)
+isRect 		= geometry.isRectangular(10)
+isQuad 		= geometry.isRectangular(30) && geometry.nFaces == 6
+
+
+###
+### RULES
+###
+
+@StartRule
+Lot --> 
+	case Create_Park:
+		GoGreen
+	case !Create_Building: 
+		Ground
+	else:
+		Ground
+		s('0.9,'1,'0.9) center(xz) alignScopeToAxes(y) s('1,0,'1)
+		innerRectangle(edge) { shape: Footprint } 
+	
+# create envelope on footprint		
+Footprint -->
+	case isVeryThin:
+		NIL									# no buildings on lots which are too small
+	case Volume_ID > -1:
+		extrude(buildingHeightInternal) 	# extrusion
+		i(volume)				    		# insert a volume (instead of using the extrusion only)
+		s('1,hMod,'1) 	    				# make it modulo floor-height				
+		Envelope				    		# initiate Tower
+		Flyer
+	else: # dito, but here extrusion only (no volume insertion)
+		extrude(buildingHeightInternal) 	
+		s('1,hMod,'1) 	    
+		Envelope	
+		Flyer			    
+
+# in case the area is very big, we create some setbacks on top
+Envelope -->
+	case scope.sx*scope.sz > 6000:
+		15%: split(y){ '0.9			 : Tower 
+					 | ~3  			 : s('0.8,'1,'0.8) center(xz) Tower
+					 | ~1  			 : s('0.6,'1,'0.6) center(xz) Tower }
+		15%: split(y){ 'rand68       : Tower 
+					 | ~rand(0.5,1.5): s('0.85,'1,'0.85) center(xz) Tower
+					 | ~1            : s('0.7,'1,'0.7) center(xz) Tower }
+		15%: split(y){ 'rand48 		 : Tower 
+					 | ~1      		 : s('rand79,'1,'rand79) center(xz) Tower }
+		15%: split(y){ 'rand48 		 : Tower 
+					 | ~1      		 : t('rand03,0,'rand03) s('0.7,'1,'0.7) Tower }
+		else: Tower
+	else: Tower
+
+
+Flyer -->
+	case Create_HoverEngine:
+		50%:
+			s(scope.sx-2*Protrusion_Size,-rand(7,15),scope.sz-2*Protrusion_Size)
+			PlaceEngines("volumes/cyl24_ver.obj")
+		else:
+			s(scope.sx-2*Protrusion_Size,-rand(7,15),scope.sz-2*Protrusion_Size)
+			PlaceEngines("volumes/cyl24_ver_taper.obj")
+	else:
+		NIL
+
+PlaceEngines(engineAsset) -->
+		split(x){ ~HoverEngine_Size: split(z){~HoverEngine_Size: PlaceEngine(engineAsset) }* }*
+
+PlaceEngine(engineAsset) -->
+		center(xz)
+		i(engineAsset)
+		reverseNormals
+		texture(getWallTex(0,"color"))
+		color(0.3,0.3,0.3)
+	
+
+###
+### Green Space
+###
+
+GoGreen --> 
+	GreenGround
+	Plant_Distributor.Generate
+
+getGreenSpaceTexture	= imageBestRatio("/ESRI.lib/assets/Groundcover/Green/green*.jpg","yx")
+
+GreenGround -->
+	alignScopeToGeometry(zUp,0,longest) 
+	setupProjection(0,scope.yx,'1,'1) projectUV(0)
+	texture(getGreenSpaceTexture)
+
+
+###
+### Tower 
+###
+# creates a core part on one side and invokes the generation of the protruding sections on the other side (the characteristic element of this city)
+#
+
+# consts
+const insideSections = 15%: true else: false	# 'false' means the recursive sections are protruding to all sides (front, left and right), true means they are protruding just on the front
+	
+# functions
+coreH    = scope.sy+h(30%: 1 30%: -2 else: -1)	# the core has either some floors less or some floors more (but not same height)
+nGapInit = 30%: 3 30%: 5 else: 4				# the initial size of the gaps between the sections (in number of floors)
+
+# rules
+Tower -->
+	case insideSections: 
+		split(z){ '0.65        : s('1,coreH,'1) Mass(false) Elevators }		# the back part is taken as core (cut the front part away)
+		split(z){ ~1           : NIL 										# this time the back part is cut away
+				| '0.7         : s('rand68,'1,'1) center(x) Sections }    	# and on the front part the sections are invoked
+	else:
+		split(z){ 'rand(.65,.8): s('rand68,coreH,'1) center(x) Mass(false) Elevators }
+		split(z){ ~1           : NIL 
+				| 'rand(.65,.7): Sections }
+
+Sections -->	
+	case scope.sy > 150 || p(0.5):	# in case the building is high or with a probability of 50% sections are created (otherwise just two masses)
+		Sections(nGapInit)
+	else:
+		Mass(true)	
+
+
+###
+### Recursive Sections
+###
+
+# functions
+alterGapHeight(n) =
+	case n > 1:  30%: n+1 30%: n-1 else: n
+	else:        n
+	
+elevatorH(massH,gapN) = 80%: massH+h(gapN+2) else: massH 					# in 20% of the cases, the elevators do not connect to the section above
+
+# generate recursively the sections (by splitting away parts on the bottom) until nothing left on top
+# (parameter nGap: the height of the gab between two blocks (in number of floors) )
+Sections(nGap) -->
+	case scope.sy >= 4*h(nGap):												# invokes THE recursive call (in case there is enough room)
+		RecursiveSections(hMod(rand(0.1,0.5)),nGap)
+	case insideSections:                									# final top section (for inside types): invokes a Mass with roof 
+		80% : Mass(true)				
+		else: s('1,'1,'rand(1.1,1.3)) Mass(true)							# top section a little longer (looks cool)
+	else:                               									# final top section: invokes a Mass with roof (but for outside types with more variation)
+		60% : Mass(true)
+		10% : s('rand(1.1,1.3),'1,'1) center(x) Mass(true)					# top section a little wider
+		10% : s('1,'1,'rand(1.1,1.4)) center(z) Mass(true)					# top section a little longer
+		10% : s('rand(1.1,1.3),'1,'rand(1.1,1.4)) center(xz) Mass(true)   	# wider and longer
+		else: s('rand(1.1,1.3),'1,'rand(1.1,1.3)) center(x) Mass(true)		# wider and longer (but no back move via center(z)
+
+# recursive mass splitting:
+# splits the given shape into 3 parts: a mass, a gap (i.e. NIL), and an upper part which is further splitted 
+# furthermore, eleveators are invoked here as well
+RecursiveSections(massH,nGap) -->
+	split(y){ massH: Mass(false)  | (h(nGap)): SectionGap | ~1: Sections(alterGapHeight(nGap)) }
+	split(y){ (elevatorH(massH,nGap)): Elevators }		# elevator on mass and/or over the gap
+
+
+###
+### Mass
+###
+
+# functions
+flipTileInit   = 50%: 0 25%: 1 else: 3		
+getSeed        = rand(1,300000)             # later needed so that the different facades generate the same random protrusions (e.g. that they connect properly over the edges)
+
+# handling level of detail
+Mass(roof) -->
+	case LOD_low:
+		s(scope.sx-2*Protrusion_Size,'1,scope.sz-2*Protrusion_Size) center(xyz) 
+		comp(f){ bottom: NIL | horizontal = Roof(roof) |
+		all =
+			set(material.colormap,getWallTex(0,"color"))
+			set(material.specularmap,getWallTex(0,"mask")) 						     
+			WallLowLOD
+		} # sides are merged together and textured by just one projection 
+	else:
+		s(scope.sx-2*Protrusion_Size,scope.sy+0.3,scope.sz-2*Protrusion_Size) center(xyz) 	# detail: make it 0.3 higher so that we do not have z-fighting on the horizontals 
+		Balconies
+		InteriorStructure
+		comp(f){ bottom: Bottom | horizontal: Roof(roof) | all: 
+			set(material.colormap,getWallTex(0,"color"))       # set the texture here already (colormap might be overwritten in the protrusions)
+			set(material.specularmap,getWallTex(0,"mask"))
+			set(material.bumpmap,getWallTex(0,"mask")) 
+			set(material.opacitymap,getWallTex(0,"opacity")) 
+			Facade }
+
+
+###
+### Facade
+###
+
+# consts
+const protrusionsParallelFacade = 30%: true else: false		# in case this is false, the protrusions on the facade will be vertical, even if the facade is aslant (looks cool too)
+
+# functions
+horizonalPivot = case pivot.oz > -3 && pivot.oz < 3 || pivot.oz > -183 && pivot.oz < -177 || pivot.oz > 177 && pivot.oz < 183: true else: false
+verticalPivot  = case pivot.ox > -3 && pivot.ox < 3 || pivot.ox > -183 && pivot.ox < -177 || pivot.oy > 177 && pivot.ox < 183: true else: false
+
+zProj = case Protrusion_Size > 2 && verticalPivot: getTileWidth(scope.sx/5)/ Protrusion_Size else: 0
+
+# setup pivot
+Facade -->
+	alignScopeToGeometry(zUp,auto) 
+	FacadeAlignCheck
+	
+# this is an advanced trick to ensure that the pivot is also correctly set for triangle-shaped faces (the problem is that the auto-aligning 'fails' if there is no horizontal line at the bottom means the pivots x axis is not perpendicular to the facades normal)
+FacadeAlignCheck -->
+	case !horizonalPivot && scope.sy > 2* Floor_Height :
+		alignScopeToAxes(y)
+		split(y){ Floor_Height: FacadeAligned(0) 
+				| ~1 : alignScopeToGeometry(zUp,auto) FacadeAligned(0) }
+	else:
+		FacadeAligned(zProj)	
+
+# now setup the uv projection for color and dirtmap texture		
+FacadeAligned(zProj) -->
+	case !protrusionsParallelFacade:
+		alignScopeToAxes(y)								# to texture it we need a vertical pivot (so that all floorheights are the same)
+		setupProjection(0,scope.xy,16*getTileWidth(scope.sx/5),16*Floor_Height,zProj) 	# colormap texture projection
+		setupProjection(2,scope.xy,scope.sx,scope.sy)	# dirtmap texture projection
+		CenterProtrusions				
+	else:
+		alignScopeToAxes(y)
+		setupProjection(0,scope.xy,16*getTileWidth(scope.sx/5),16*Floor_Height,zProj) 	
+		setupProjection(2,scope.xy,scope.sx,scope.sy)
+		alignScopeToGeometry(zUp,auto)					# in this case we align the pivot back to the facade, this will result in protrusions parallel to the facade (instead of globally-vertical) ... of course that influences only facades which are aslant
+		CenterProtrusions					
+
+# a vertical stripe with protrusions in the center of the facade
+CenterProtrusions -->
+	case Protrusion_Size > 0 && scope.sx > Tile_Width *8 && scope.sy > Floor_Height *2 && !geometry.isConcave:
+		10% : split(x){ '0.2: Wall | ~1: Stripe | '0.2: Wall }
+		18% : split(x){ '0.4: Wall | ~1: Stripe | '0.4: Wall }
+		18% : split(x){ '0.4: Wall | ~1: Stripe | '0.2: Wall }
+		18% : split(x){ '0.2: Wall | ~1: Stripe | '0.4: Wall }
+		18% : split(x){ '0.6: Wall | ~1: Stripe | '0.2: Wall }
+		else: split(x){ '0.2: Wall | ~1: Stripe | '0.6: Wall }
+	else:	# if too small just a plain facade
+		Wall
+	
+	
+	
+#######################
+# Stripe and its protrusions
+#	
+
+# consts
+const protrusionTexType = 80% : 1 else: 0    # with a chance of 30%, the protrusions are of windows only
+
+# functions
+protrusionH   	= 30%: 0.7 30%: 0.5 else: 0.4		# relative height how the stripe will be subdivided
+protrusionGapN 	= 30%: 1 30%: 3 else: 2    		# number of floors inbetween two protrusions (i.e. not protruding)
+getProtrusionD 	= case scope.sz > Protrusion_Size : scope.sz else: scope.sz+ Protrusion_Size
+
+# set the height of the two parts of one stripe
+Stripe -->
+	Stripe(h(protrusionGapN),hMod(protrusionH))		
+		
+# split the stripe into a non-protruding part, a protruding part, and a recursive call to invoke another stripe above
+# note: due to the controlled random seeds, this will result in the same structure for all stripes with same seed 
+Stripe(gapH,proH) -->
+	case scope.sy > gapH + proH + h(4): 	    # at least 4 floors need to be remain for a recursive call
+		split(y){ gapH : Wall | proH : Protrusion | ~1: Stripe }
+	case scope.sy > gapH + h(1):      	    # at least 1 floor need to be remained for final protrusion
+		split(y){ gapH : Wall | ~1   : Protrusion }
+	case scope.sy > h(2):      	            # otherwise a gap consisting of 1 floor
+		split(y){ (h(1)) : Wall | ~1 : Protrusion }
+	else:									    # otherwise no gap
+		Protrusion
+
+# invoke the protrusion and add the railing
+Protrusion -->
+	case geometry.isRectangular(1):
+		setupProjection(2,scope.xy,'1,'1) 							# detail: protrusions have the dirtmap over the whole scope (instead of just the corresponding facade part), this might make them look dirty and gives more interesting variation
+		texture(getWallTex(protrusionTexType,"color"))				# set the colormap (overwrite the one set above)
+		set(material.bumpmap,getWallTex(protrusionTexType,"mask")) 
+		set(material.opacitymap,getWallTex(protrusionTexType,"opacity")) 
+		set(material.specularmap,getWallTex(protrusionTexType,"mask")) 											
+		s('1,'1,getProtrusionD) primitiveCube() comp(f){ top: Flatroof.RoofTexture | all = Wall }
+	else:
+		Wall
+
+
+	
+#######################
+# Wall
+#
+
+# consts
+const getDirtmapNr = floor(rand(1,7))
+
+# function
+getDirtmapSize     = case scope.sy > 2* scope.sx: "512x1024" else: "512x512"
+getDirtmap         = "dirtmaps/dirtmap." + getDirtmapNr + "." + getDirtmapSize + ".png"
+getUOffset         = 40% : floor(rand(16))/16.0	else: 0	# sometimes no offset is also fine (otherwise it looks too random and does not look like architecture anymore)
+getVOffset  	   = 20% : floor(rand(16))/16.0 else: 0
+
+# WallSetup (used in case no texture-projections etc have been setupped before)
+WallSetup(subType) -->
+	texture(getWallTex(subType,"color"))                                              # set the colormap
+	set(material.bumpmap,getWallTex(subType,"mask")) 
+	set(material.opacitymap,getWallTex(subType,"opacity")) 
+	set(material.specularmap,getWallTex(subType,"mask")) 
+	setupProjection(0,scope.xy,16*getTileWidth(scope.sx),16*Floor_Height,zProj) 	# colormap texture projection
+	setupProjection(2,scope.xy,scope.sx,scope.sy)		   			                        	# dirtmap texture projection
+	Wall
+
+# THE standard Wall rule which is called most 
+Wall -->
+	case scope.sy > 20* Floor_Height :			# if the wall element is too high, the 16x16 tile textures will look repeating
+		split(y){ (rint(rand(10,16))*Floor_Height) : Wall }*
+	case !geometry.isConcave:
+		trim
+		WallMaterial		# overlapping protrusions (happens in case of aslant facades etc) can be trimed away (trim works only proper if not concave)
+	else:
+		WallMaterial
+
+WallMaterial -->
+	projectUV(0) offsetUV(0,getUOffset,getVOffset) 
+	projectUV(2) 
+	set(material.dirtmap, getDirtmap)		
+	set(material.bumpValue, bumpDepth)     
+	set(material.specular.r, glassSpecGain) set(material.specular.g, glassSpecGain) set(material.specular.b, glassSpecGain)	
+	set(material.reflectivity, glassReflGain) 	
+	set(material.shininess, glassShininess) 
+	color(Facade_Color)
+	
+
+# For the low level of detail i.e. texture coord setup needs still to be done (and no bump nor dirtmap will be assigned)
+WallLowLOD -->
+	alignScopeToAxes(y) setupProjection(0,scope.xy,16*getTileWidth(scope.sx),16*Floor_Height,1) projectUV(0)
+	set(material.specular.r, glassSpecGain) set(material.specular.g, glassSpecGain)  set(material.specular.b, glassSpecGain)	
+	set(material.reflectivity, glassReflGain)
+	set(material.shininess, glassShininess)
+	color(Facade_Color)
+ 
+
+#######################
+# Ground 
+#
+
+Ground -->
+	case !Create_Ground:
+		NIL
+	case !LOD_low:
+		GreenGround
+		setupProjection(0,scope.xz,150,1000) projectUV(0) translateUV(0,rand,rand)
+		texture("misc/ground_texture.png")
+	else:
+		GreenGround
+
+LotCorner --> Ground
+LotInner --> Ground
+
+
+
+#######################
+# Railing
+#
+
+const railDamp = 50% : 0.75 else: 1 
+
+RoofRailing -->
+	case LOD_low:
+		NIL
+	case LOD_mid:
+		extrude(railingH) comp(f){ side = RailingMaterial }  comp(f){ side: People }
+	else:
+		extrude(railingH) comp(f){ side: s('1.1,'1,railingD) center(x) Railing }
+
+Railing -->
+	set(trim.horizontal,false)
+	t(0,0,railingP-railingD) s('1,railingH,'1) primitiveCube() RailingMaterial
+	
+RailingMaterial -->
+	setupProjection(0,scope.xy,16*getTileWidth(scope.sx),1000) projectUV(0) 
+	texture(getWallTex(0,"color"))
+	setupProjection(2,scope.xy,scope.sx,scope.sy) projectUV(2) 
+	set(material.dirtmap,getDirtmap)
+	set(material.color.r,railDamp) 
+	set(material.color.g,railDamp) 
+	set(material.color.b,railDamp)
+
+
+# -------------------------------------------
+# People
+# 
+# Sample assets provided by lowpolygon3d.com
+# 
+# More assets with high-res textures can be 
+# purchased at http://www.lowpolygon3d.com.
+# 
+# -------------------------------------------
+
+peopleAsset = fileRandom("assets/people_by_lowpolygon3d_com/*.obj")
+dirHuman = 30%: 90 30%: -90 else: 0
+
+People -->
+	case Create_People > 0:
+		30% : split(x){ { 0.1: Human | ~rand(1,5): NIL | 0.1: Human | ~rand(1,5): NIL }* | 0.1: Human }          # could be distributed better...
+		30% : split(x){ { 0.1: Human | ~rand(3,10): NIL | 0.1: Human | ~rand(3,10): NIL }* | 0.1: Human }          # could be distributed better...
+		else: split(x){ { 0.1: Human | ~rand(0.5,3): NIL | 0.1: Human | ~rand(5,20): NIL }* | 0.1: Human }          # could be distributed better...
+	else:
+		NIL
+
+Human -->
+	case p(Create_People/2):
+		t(0,railingH-0.9,-rand(0.5,1.5))
+		s(0,rand(1.7,2),0)
+		r(0,dirHuman,0) 
+		i(peopleAsset)
+	else:
+		NIL
+
+
+
+#######################
+# Balconies
+#
+
+Balconies -->
+	case p(Create_Balconies) && scope.sy > 12:
+		split(y){ (hMod(rand(0.2,0.7)))    : NIL
+				| Floor_Height: s(scope.sx+balconyD*2,'1,scope.sz+balconyD*2) center(xz) Balcony
+				| ~1: Balconies }
+	else:
+		NIL
+	
+Balcony -->
+	case Balcony_Type == "Closed":
+		comp(f){side: BalconyWall | all: Flatroof.RoofTexture }
+	else:
+		case LOD_high: split(y){ Floor_Height *0.05: Flatroof.RoofTexture comp(f){top: RoofRailing } }
+		else         : t(0,'-1,0) comp(f){ top: Flatroof.RoofTexture RoofRailing }
+	
+BalconyWall -->
+	alignScopeToGeometry(zUp,auto) WallSetup(1)                   # set the colormap (uses WallB)
+
+
+
+#######################
+# Elevator Structures
+#
+
+# functions
+elevatorPos = 40%: -0.2 40%: 0.2 else: 0
+elevatorH = 50%: hMod-h(2) else: hMod(rand(.7,.95))
+
+# invoke on the sides of the mass
+Elevators -->
+	comp(f) { left : Ads ElevatorOnFacade(elevatorPos) 
+			| right: Ads ElevatorOnFacade(elevatorPos)
+			| back : ElevatorOnFacade(elevatorPos) 
+			| front: Ads Ads  
+			| side : Ads | all : NIL }
+
+# position the elevator on the facade	
+ElevatorOnFacade(pos) -->
+	case scope.sy < 50 || scope.sx < 20 || scope.sz > 0.2 || p(1-Create_Elevators) || !geometry.isRectangular(5):
+		NIL
+	else:
+		alignScopeToGeometry(zUp, auto) 
+		split(x){ '0.4+pos : NIL 
+				| ~1       : split(y){ ~1: NIL | elevatorH: Elevator.Init }
+				| '0.4-pos : NIL }
+
+Elevator.Wall --> 
+	WallSetup(0)						# back from imported rule
+
+Elevator.CabinMaterial -->
+	texture(getWallTex(protrusionTexType,"color"))				# set the colormap (overwrite the one set above)
+	set(material.opacitymap,getWallTex(protrusionTexType,"opacity")) 
+	set(material.specularmap,getWallTex(protrusionTexType,"mask")) 											
+	WallMaterial
+
+
+
+#######################
+# Advertisements
+#
+
+Ads --> 
+	set(Advertisements.balconyD,balconyD)
+	Advertisements.BillboardFacade
+
+Flatroof.RoofBillboard --> Advertisements.RoofBillboard
+
+Advertisements.Wall --> RailingMaterial
+
+
+
+#######################
+# Top and Bottom
+#
+Bottom -->
+	case LOD_high && !geometry.isConcave(): 
+		Flatroof.BottomTexture		
+		Flatroof.BottomProps		
+	else:
+		Flatroof.BottomTexture 
+
+Roof(roof) -->
+	case roof:			# in case a roof has to be created 
+		RoofRailing 	# invoke the railing 
+		BuildingTrees
+		alignScopeToAxes CheckRoof			# and check if horizontal
+	else:
+		RoofRailing Flatroof.RoofTexture	# otherwise just just railing plus a rooftexture (no roof probs etc)
+		
+CheckRoof -->
+	case scope.sy < 0.1:		# in case the roof is horizontal
+		Flatroof.Init			# invoke the imported flatroof rule
+	else:
+		Flatroof.RoofTexture	# otherwise just a rooftexture (no roof probs etc)
+					
+Flatroof.Wall --> WallSetup(0)	# back from imported rule
+
+Flatroof.RailingMaterial --> RailingMaterial
+
+Flatroof.Antenna --> Antenna.Init
+
+Antenna.RailingMaterial --> RailingMaterial
+
+
+
+#######################
+# BuildingTrees
+#
+
+const myMix = "White Ash;2.3;Western Juniper;35.8;White Oak;21.6;Black Locust;3.6;Sassafras;2.5;Tree of Heaven;2.1;Pawpaw;2.7;Common Hackberry;1.4;White Mulberry;5.5;Black Tupelo;6.6;Hophornbeam;11;Sourwood;4.8;"
+
+SectionGap -->
+	SectionGap(scope.sy)
+	
+SectionGap(gapheight) -->
+	comp(f){ bottom: reverseNormals BuildingTrees(gapheight) } 
+
+BuildingTrees(gapheight) --> 
+	case Create_Green > 0:
+		set(Plant_Distributor.Distribution, "Uniform without crown overlaps")
+		set(Plant_Distributor.Density, Create_Green*2)
+		set(Plant_Distributor.Plant.Representation, getPlantRep)
+		set(Plant_Distributor.Plant.RandomHeights, "Mature only")
+		set(Plant_Distributor.Plant.RandomBrightness, true)
+		t(0,0,-0.5)
+		Plant_Distributor.Generate(myMix)
+	else: 
+		NIL
+
+BuildingTrees --> BuildingTrees(15)
+
+
+
+
+#######################
+# Interior
+#
+
+InteriorStructure -->
+	case LOD_high:
+		set(material.bumpmap,"")
+		set(material.specularmap,"")
+		set(material.opacitymap,"") 
+		split(y){ ~Floor_Height*0.1: FloorVolume(scope.sy*9) |  ~Floor_Height*0.9: NIL }*
+	else:
+		NIL
+		
+FloorVolume(height) -->
+	case split.index == 0:
+		comp(f){ top: OfficeFloor Interior(height) }	
+	else:
+		comp(f){ top: OfficeFloor Interior(height) | bottom: OfficeCeiling }
+
+Interior(height) -->
+	offset(-rand(2,10)) 
+	comp(f){ inside: extrude(height) CoreVolume | border: OfficeProps }
+	NIL
+	
+CoreVolume -->
+	comp(f){side = CoreSides }
+
+CoreSides -->
+	setupProjection(0, scope.xy, rand(50,80), '1,1) projectUV(0)
+	texture(fileRandom("facades/interiors/Offint_*.tif"))
+	set(material.ambient.r,0.7) set(material.ambient.g,0.7) set(material.ambient.b,0.7)
+
+OfficeCeiling -->
+	50% : setupProjection(0, scope.xy,rand(10,30),rand(10,30)) OfficeCeilingTexture
+	else: setupProjection(0, scope.yx,rand(10,30),rand(10,30)) OfficeCeilingTexture
+
+OfficeCeilingTexture -->
+	projectUV(0)
+	texture("facades/interiors/Off_top.tif")
+	set(material.ambient.r,0.7) set(material.ambient.g,0.7) set(material.ambient.b,0.7)
+
+OfficeFloor -->
+	setupProjection(0, scope.xy, rand(40,60), rand(40,60)) projectUV(0)
+	texture("facades/interiors/Off_floor.tif")
+
+OfficeProps -->
+	offset(-1,inside)
+	alignScopeToAxes(y)
+	scatter(surface,geometry.area/rand(5,20),uniform) { OfficeProp }
+	NIL
+	
+OfficeProp -->
+	setupProjection(0, scope.xy, rand(50,80), 3,0,-0.5) 
+	s(rand(0.5,2),rand(0.5,2.5),rand(0.5,2)) center(xz) primitiveCube() projectUV(0)
+	texture(fileRandom("facades/interiors/Offint_*.tif"))
+	set(material.ambient.r,0.3) set(material.ambient.g,0.3) set(material.ambient.b,0.3)
+	

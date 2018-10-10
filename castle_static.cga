@@ -1,0 +1,132 @@
+/**
+ * File:    castle_static.cga
+ * Created: 8 Mar 2017 18:17:13 GMT
+ * Author:  Esri R&D Center Zurich
+ */
+
+version "2017.0"
+
+
+@Hidden
+import castle:"rules/castle.cga" 
+
+
+// ******************************
+// Variables
+// ******************************
+
+const base_width = castle.base_width
+const base_height = castle.base_height
+const base_depth = castle.base_depth
+
+const hexBase_width = 25
+const hexBase_depth = hexBase_width
+
+const wall_depth = 3
+const wallRoof_angle = 50
+
+const cornerTower_diameter = 6
+const cornerTower_height = 8
+
+const centerTower_diameter = castle.centerTower_diameter
+const centerTower_height = castle.centerTower_height
+
+
+// ******************************
+// Start Rule
+// ******************************
+
+Lot -->
+	Base
+	CenterTower
+	
+	
+// ******************************
+// Rules
+// ******************************
+
+Base -->
+	s(base_width, base_height, base_depth)
+	center(xz)
+	primitiveCube
+	Walls
+	CornerTowers
+	HexagonBase
+	
+HexagonBase -->
+	s(hexBase_width, base_height, hexBase_depth)
+	center(xz)
+	primitiveCylinder(6, 0.5*scope.sx, base_height)
+	
+Walls -->
+	[ s(scope.sx - 2*cornerTower_diameter, '1, cornerTower_diameter)
+	  center(x)
+	  WallFront ]
+	[ t(0, 0, scope.sz - cornerTower_diameter)
+	  s(scope.sx - 2*cornerTower_diameter, '1, cornerTower_diameter)
+	  center(x)
+	  WallFront ]
+	[ s(cornerTower_diameter, '1, scope.sz - 2*cornerTower_diameter)
+	  center(z)
+	  WallSide ]
+	[ t(scope.sx - cornerTower_diameter, 0, 0)
+	  s(cornerTower_diameter, '1, scope.sz - 2*cornerTower_diameter)
+	  center(z)
+	  WallSide ]
+	
+WallFront -->
+	s('1, '1, wall_depth)
+	center(z)
+	comp(f) { top: s('1, scope.sy + castle.towerConeOverhang, 0)
+				   center(y)
+				   roofGable(wallRoof_angle)
+				   color(castle.towerCone_color)
+				   Roof.
+			| all: Wall. }
+	
+WallSide -->
+	s(wall_depth, '1, '1)
+	center(x)
+	comp(f) { top: s(scope.sx + castle.towerConeOverhang, '1, 0)
+				   center(x)
+				   roofGable(wallRoof_angle)
+				   color(castle.towerCone_color)
+				   Roof.
+			| all: Wall. }
+	
+CornerTowers -->
+	CornerTower
+	[ t(scope.sx - cornerTower_diameter, 0, 0) CornerTower ]
+	[ t(0, 0, scope.sz - cornerTower_diameter) CornerTower ]
+	[ t(scope.sx - cornerTower_diameter, 0, scope.sz - cornerTower_diameter) CornerTower ]
+	
+	
+CornerTower -->
+	s(cornerTower_diameter, cornerTower_height, cornerTower_diameter)
+	primitiveCylinder
+	color(castle.tower_color)
+	TowerCylinder.
+	castle.TowerCone
+	
+CenterTower -->
+	t(0, base_height, 0)
+	s(centerTower_diameter, centerTower_height, centerTower_diameter)
+	center(xz)
+	primitiveCylinder
+	color(castle.tower_color)
+	TowerCylinder.
+	castle.TowerCone
+	s(castle.door_width, castle.door_height, castle.door_depth)
+	center(xz)
+	CenterTowerDoor(0)
+	CenterTowerDoor(1)
+	CenterTowerDoor(2)
+	CenterTowerDoor(3)
+	CenterTowerDoor(4)
+	CenterTowerDoor(5)
+	
+CenterTowerDoor(ind) -->
+	r(scopeCenter, 0, ind*60, 0)
+	t(0, castle.getDoor3Y(ind), 0.5*centerTower_diameter)
+	castle.Door("centerTower")
+	

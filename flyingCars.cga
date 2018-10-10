@@ -1,0 +1,136 @@
+/**
+ * File:    flyingCars.cga
+ * Created: 28 Nov 2008
+ * Updated: 21 October 2011
+ */
+
+version "2011.1"
+
+// ---------------------------------------
+// Attributes 
+// ---------------------------------------
+
+# 0 = disable, 0.5 = low, 1.0 = high
+@Order(1)
+attr mapLOD = 0.5
+
+attr carAreaLength = 12
+@Range(3,15)
+attr carLength = 9
+
+@Range(0,1)
+attr trafficDensity = 0.15
+
+attr nrOfLevels = floor(buildingH/levelSpacing)
+attr heightOfFirstLevel = 20
+attr levelSpacing = 120
+
+@Range(20,1400)
+attr buildingH = rand(200,1000)		# usally this value is overwritten by controlmap 
+
+
+
+
+// ---------------------------------------
+// Starters
+// ---------------------------------------
+
+Street -->
+	case mapLOD == 0: NIL
+	else: FlyingCars
+
+# catch other cases
+Crossing --> Street
+Junction --> Street
+JunctionEntry --> NIL
+Sidewalk --> NIL
+
+// go
+FlyingCars -->
+	alignScopeToAxes(y)
+	t(0,heightOfFirstLevel,0) Levels(0)
+  
+// create the street layers via recursion
+Levels(ind) -->
+	case ind >= nrOfLevels: 
+		NIL
+	else:  
+		Road t(0,levelSpacing,0) Levels(ind+1)
+	
+// offset pivot by 2 of one lane to get correct traffic directions of lanes 
+Road --> 
+	case scope.sz<10:
+		s('1,'1,10) center(z)
+		split(z){~1 : setPivot(xyz, 2)  Lanes | ~1 : Lanes}
+	else:
+		split(z){~1 : setPivot(xyz, 2)  Lanes | ~1 : Lanes}
+
+
+// split lanes in car areas:
+Lanes --> 
+	split(x){~carAreaLength : Car }*	
+
+ 
+// load car asset with probability, and offset car randomly 
+Car --> 
+	case p(trafficDensity): 
+		t(rand(0,scope.sx-carLength),0,rand(-1,1)) CarAsset
+	else: 
+		NIL 
+	
+	
+// load car assets with probabilies
+CarAsset -->
+	20% : CamaroAsset 
+	20% : LimoAsset 
+	20% : PorscheAsset 
+	20% : PickupAsset 
+	else : CabAsset
+	
+
+
+// The Car Asset loaders
+
+CamaroAsset -->
+	s(carLength-2,2.5,4) center(z) 
+	i(camaro_asset) texture( camaro_tex) 
+
+LimoAsset -->
+	s(carLength,3,4) center(z) 
+	i(limo_asset) texture( limo_tex) 
+
+PorscheAsset -->
+	s(carLength-2,2.5,4) center(z)
+	i(porsche_asset) texture( porsche_tex) 
+
+PickupAsset -->
+	s(carLength-1.5,3.5,4) center(z) 
+	i(pickup_asset) texture( pickup_tex) 
+
+CabAsset --> 
+	s(carLength-2,3,4) center(z) 
+	i(cab_asset) texture(cab_tex)
+
+
+
+// The car assets and textures
+camaro_asset = "cars/camaro/camaross4.obj"
+camaro_tex = fileRandom("*/cars/camaro/camarotex3*jpg")
+	
+limo_asset = "cars/limo/limo.obj"
+limo_tex = fileRandom("*/cars/limo/car1tex2*jpg")
+
+porsche_asset = "cars/porsche/porsche.obj"
+porsche_tex = fileRandom("*/cars/limo/car1tex2*jpg")
+
+pickup_asset = "cars/pickup/pickup.obj"
+pickup_tex = fileRandom("*/cars/pickup/picksidegrey3*jpg")
+
+cab_asset = 
+	case mapLOD > 0.5: "cars/cab/cab.obj"
+	else 	      : "cars/cab/cab_lr.obj"	
+cab_tex = fileRandom("*/cars/cab/cab1final4*jpg")
+
+
+
+

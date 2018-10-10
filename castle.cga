@@ -1,0 +1,226 @@
+/**
+ * File:    castle.cga
+ * Created: 7 Mar 2017 12:26:50 GMT
+ * Author:  Esri R&D Center Zurich
+ */
+
+version "2017.0"
+
+
+// ******************************
+// Attributes
+// ******************************
+
+@Handle(shape=WholeTower^2, slip=screen, repeat=none)
+@Range(2, 40)
+attr tower_height = 22
+
+@Hidden
+attr tower_diameter = 4.5
+
+
+// ******************************
+// Variables and Functions
+// ******************************
+
+const base_width = 40
+const base_height = 4
+const base_depth = base_width
+const centerTower_diameter = 5
+const centerTower_height = 30
+
+const hexagon_radius = 5
+const a = 0.5*hexagon_radius
+const tower_color = "#ffffff"
+const towerCone_height = 5
+const towerConeOverhang = 0.3
+const towerCone_color = "#2584c9"
+const door_width = 0.9
+const door_height = 2
+const door_depth = 0.2
+const doorFrame_thickness = 0.1
+const platform_height = 0.1
+const railing_depth = doorFrame_thickness
+const railing_height = 0.7
+const testRailing_height = 0.01
+
+const check_height = 10
+
+const list_answers = "10;15;25;24;20;16;"
+const list_door1_y = "0.2;0.4;0.4;0.75;0.5;0.75;"
+const list_door2_y = "0.2;0.2;0.2;0.5;0.3;0.75;"
+const list_door3_y = "8;10;5;13;17;4;"
+
+getTowerHeight = rint(tower_height)
+
+getAnswer(ind) = float(listItem(list_answers, ind))
+getDoor1Y(ind) = float(listItem(list_door1_y, ind))
+getDoor2Y(ind) = float(listItem(list_door2_y, ind))
+getDoor3Y(ind) = float(listItem(list_door3_y, ind))
+
+
+// ******************************
+// Start Rule
+// ******************************
+
+Lot -->
+	t(0, base_height, 0)
+	primitiveCylinder(6, hexagon_radius, tower_height)
+	comp(f) { side: Tower(comp.index) }
+	CreateOccluderTest
+	report("ProgressTotal", 1)
+		
+		
+// ******************************
+// Tower
+// ******************************
+
+Tower(ind) -->
+	extrude(scope.sx)
+	rotateScope(-90, 0, 0)
+	ResizeTower(ind, getTowerHeight)
+		
+ResizeTower(ind, cylinder_height) -->
+	set(tower_diameter, tower_diameter + rand(-2, 1))
+	s(tower_diameter, cylinder_height, tower_diameter)
+	center(xz)
+	primitiveCylinder
+	WholeTower(ind, cylinder_height)
+	TestTower(ind, cylinder_height)
+				 
+WholeTower(ind, cylinder_height) -->
+	color(tower_color)
+	TowerCylinder.
+	TowerCone
+	s(door_width, door_height, door_depth)
+	center(xz)
+	Door1(ind, cylinder_height)
+	Door2(ind, cylinder_height)
+	Door3(ind, cylinder_height)
+	ExtraDoor(cylinder_height)
+		
+TowerCone -->
+	t(0, '1, 0)
+	s(scope.sx + towerConeOverhang, towerCone_height, scope.sz + towerConeOverhang)
+	center(xz)
+	primitiveCone
+	color(towerCone_color)
+	
+Door1(ind, cylinder_height) -->
+	case cylinder_height < getDoor1Y(ind)*cylinder_height + door_height:
+		NIL
+	else:
+		r(scopeCenter, 0, 240, 0)
+		t(0, getDoor1Y(ind)*cylinder_height, 0.5*tower_diameter)
+		Door("side")
+	
+Door2(ind, cylinder_height) -->
+	case cylinder_height < getDoor2Y(ind)*cylinder_height + door_height:
+		NIL
+	else:
+		r(scopeCenter, 0, 120, 0)
+		t(0, cylinder_height - getDoor2Y(ind)*cylinder_height - door_height, 0.5*tower_diameter)
+		Door("side")
+	
+Door3(ind, cylinder_height) -->
+	case cylinder_height < getDoor3Y(ind) + door_height:
+		NIL
+	else:
+		r(scopeCenter, 0, 180, 0)
+		t(0, getDoor3Y(ind), 0.5*tower_diameter)
+		Door("toCenter")
+		
+ExtraDoor(cylinder_height) -->
+	case cylinder_height < 2*door_height:
+		NIL
+	else:
+		t(0, rand(0,1)*(cylinder_height - 2*door_height) + door_height, 0.5*tower_diameter)
+		Door("outside")
+	
+Door(location) -->
+	primitiveCube
+	split(y) { platform_height: Platform(location)
+			 | '0.65: 			split(x) { doorFrame_thickness: DoorFrame.
+							  			 | ~1: 					NIL
+							  			 | doorFrame_thickness: DoorFrame. }
+			 | ~1: 				s(scope.sx - 2*doorFrame_thickness, 2*(scope.sy - doorFrame_thickness), '1)
+			 	   				center(x)
+			 	   				t(0, '-0.5, 0)
+			 	   				rotateScope(90, 0, 0)
+			 	   				primitiveCylinder
+			 	   				rotateScope(-90, 0, 0)
+			 	  				split(y) { ~1: NIL
+			 	   						 | ~1: comp(f) { front:  NIL
+			 	   						  			   | back:   NIL
+			 	   						  			   | bottom: NIL
+			 	   						  			   | all=    extrude(vertex.normal, doorFrame_thickness) X. } } }
+
+Platform(location) -->
+	case location=="centerTower":
+		s(scope.sx + 2*railing_depth, '1, 0.25*sqrt(3)*hexagon_radius - 0.25*centerTower_diameter + 0.5*door_depth)
+		center(x)
+		Platform.
+		s('1, testRailing_height, '1)
+		t(0, platform_height, 0)
+		Railings
+	case location=="toCenter":
+		s(scope.sx + 2*railing_depth, '1, 0.25*sqrt(3)*hexagon_radius - 0.25*centerTower_diameter + a - 0.5*tower_diameter + 0.5*door_depth)
+		center(x)
+		Platform.
+		s('1, testRailing_height, '1)
+		t(0, platform_height, 0)
+		Railings	
+	else:
+		s(scope.sx + 2*railing_depth, '1, a*(1-cos(30))/cos(30) + a*0.5*(1-tan(30)) + a - 0.5*tower_diameter + 0.5*door_depth)
+		center(x)
+		Platform.
+		s('1, testRailing_height, '1)
+		t(0, platform_height, 0)
+		Railings
+	
+Railings -->
+	split(x) { railing_depth: rotateScope(0, -90, 0) Railing
+			 | ~1: 			  split(z) { ~1: 			NIL
+			 						   | railing_depth: Railing }
+			 | railing_depth: rotateScope(0, 90, 0) Railing }
+			 
+Railing -->
+	label("Railing")
+	comp(f) { front: TestRailing }
+					 
+TestRailing -->
+	case touches(all, "Railing"):
+		NIL
+	else:
+		t(0, 0, -railing_depth)
+		s('1, railing_height, 0)
+		extrude(railing_depth)
+
+
+// ******************************
+// Check Answer
+// ******************************
+
+CreateOccluderTest -->
+	s('2, check_height, '2)
+	center(xz)
+	TestCorrect
+	
+TestCorrect -->
+	case touches(intra, "Check"):
+		NIL
+	else:
+		report("Progress", 1)
+		report("Code.Castle", 8)
+		NIL
+	 
+TestTower(ind, cylinder_height) -->
+	case cylinder_height==getAnswer(ind):
+		t(0, check_height + 1, 0)
+		label("Check")
+		NIL
+	else:
+		label("Check")
+		NIL
+
+

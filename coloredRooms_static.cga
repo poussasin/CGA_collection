@@ -1,0 +1,143 @@
+/**
+ * File:    coloredRooms_static.cga
+ * Created: 16 Mar 2017 19:13:54 GMT
+ * Author:  Esri R&D Center Zurich
+ */
+
+version "2017.0"
+
+
+@Hidden
+import c:"rules/coloredRooms.cga"
+
+
+// ******************************
+// Variables and Functions
+// ******************************
+
+const room_height = c.room_height
+const wall_thickness = c.wall_thickness
+const bottom_thickness = 2*c.wall_thickness
+
+const hint_width = 2
+const hintSphere_min_radius = 0.8
+const hintSphere_max_radius = 2
+const divider_color = "#000000"
+
+getHintColor1(room_num) =
+	case room_num==0:
+		"#00ff00"
+	case room_num==1:
+		"#ff0000"
+	case room_num==2:
+		"#00ff00"
+	case room_num==3:
+		"#00ff00"
+	case room_num==4:
+		"#0000ff"
+	case room_num==5:
+		"#ff0000"
+	else:
+		"#ffffff"
+
+getHintColor2(room_num) =
+	case room_num==0:
+		"#ff0000"
+	case room_num==1:
+		"#000000"
+	case room_num==2:
+		"#0000ff"
+	case room_num==3:
+		"#000000"
+	case room_num==4:
+		"#000000"
+	case room_num==5:
+		"#0000ff"
+	else:
+		"#ffffff"
+
+
+// ******************************
+// Start Rule
+// ******************************
+
+Lot -->
+	s(c.hexagon_width, 0, c.hexagon_width)
+	center(xz)
+	primitiveCylinder(6)
+	HintRoom
+	
+	
+// ******************************
+// Rules
+// ******************************
+
+HintRoom -->
+	s('0.6, room_height + wall_thickness, '0.6)
+	center(xz)
+	InsideHintRoom
+	comp(f) { side:   HintWall(comp.index)
+			| bottom: reverseNormals
+					  extrude(bottom_thickness)
+					  Bottom. }
+
+HintWall(room_num) -->
+	extrude(wall_thickness)
+	s(scope.sx + 2*wall_thickness, '1, '1)
+	center(x)
+	trim()
+	rotateScope(-90, 0, 0)
+	Wall.
+	split(x) { ~1: split(x) { ~1: 		  NIL
+							| hint_width: split(y) { ~1: 		 NIL
+												   | hint_width: NIL
+												   				 comp(f) { front: HintCircle(room_num, 1) }
+												   | ~1: 		 NIL }
+							| ~1: 		  NIL }
+			 | ~1: split(x) { ~1: 		  NIL
+							| hint_width: split(y) { ~1: 		 NIL
+												   | hint_width: NIL
+												   				 comp(f) { front: HintCircle(room_num, 2) }
+												   | ~1: 		 NIL }
+							| ~1: 		  NIL } }
+	
+HintCircle(room_num, hint_num) -->
+	primitiveDisk
+	extrude(wall_thickness + 0.1)
+	rotateScope(-90, 0, 0)
+	t(0, 0, -wall_thickness - 0.05)
+	ColorCircle(room_num, hint_num)
+	
+ColorCircle(room_num, hint_num) -->
+	case hint_num==1:
+		color(getHintColor1(room_num))
+	else:
+		color(getHintColor2(room_num))
+	
+InsideHintRoom -->
+	split(x) { ~1: 				 comp(f) { bottom: reverseNormals
+									 			   t(0, 0, -bottom_thickness)
+									 			   split(x) { ~1: HintSphere("#ffffff")
+											  				| ~1: HintSphere("#ffffff")
+											  				| ~1: HintSphere("#ffffff") }}
+			 | 2*wall_thickness: s('1, '1, scope.sz - 2*wall_thickness)
+			 				     center(z)
+			 				     color(divider_color)
+			 				     Wall.
+			 | ~1: 				 comp(f) { bottom: reverseNormals
+									 			   t(0, 0, -bottom_thickness)
+									 			   split(x) { ~1: HintSphere("#000000")
+											  				| ~1: HintSphere("#000000")
+											  				| ~1: HintSphere("#000000") }} }
+									
+HintSphere(sphere_color) -->
+	offset(-hintSphere_max_radius, inside)
+	scatter(surface, 1, uniform) { ColoredSphere(sphere_color, rand(hintSphere_min_radius, hintSphere_max_radius)) }
+	
+ColoredSphere(sphere_color, sphere_radius) -->
+	set(trim.vertical, false)
+	s(2*sphere_radius, 2*sphere_radius, 2*sphere_radius)
+	center(xz)
+	primitiveSphere
+	color(sphere_color)
+	

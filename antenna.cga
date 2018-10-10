@@ -1,0 +1,106 @@
+/**
+ * File:    antenna.cga
+ * Created: 6 Apr 2009
+ * Updated: 21 October 2011
+ */
+
+version "2011.1"
+
+
+#######################
+#  Attributes
+#  (will be overwritten by master rule)
+
+@Order(1) @Range("Low","Medium","High")
+attr Level_of_Detail = "Medium"
+@Hidden
+attr Building_Height = 0
+@Order(2) 
+attr Antenna_Probability = 0.5
+
+
+const LOD_high = Level_of_Detail == "High"
+const LOD_mid  = Level_of_Detail == "Medium"
+const LOD_low  = Level_of_Detail == "Low"
+
+#######################
+#  Functions
+#
+
+smallAntennaH = 30%: 15 30%: 20 else: rand(10,25)
+highAntennaH = 
+	case Building_Height > 300: 30%: 50 30%: 60 else: rand(40,70)
+	else:                      30%: 30 30%: 40 else: rand(20,50)
+
+highAntennaW = 
+	case Building_Height > 300: 2
+	else:                      1.3
+
+antennaShape = 
+	case LOD_high && p(0.3)	:  "antenna/cylinder_y.obj"
+	else         			:  "builtin:cube"
+
+getAntennaTexture = "flatroofs/flatroof" + ceil(rand(10)) + ".png"
+
+
+#######################
+#  Starting Rule
+#
+
+# invoke small and high antennas at the center
+Init -->
+	case !LOD_low && p( Antenna_Probability ):
+		50%: s(0.5,smallAntennaH,0.5) center(xz) i(antennaShape) SmallAntenna
+		else: s(highAntennaW,highAntennaH,highAntennaW) center(xz) i(antennaShape) HighAntenna
+	case LOD_low && Building_Height > 200 && p( Antenna_Probability /2):				# for the low LOD we just generate a simple antenna on high buildings
+		s(1,highAntennaH*0.75,1) center(xz) i(antennaShape) RailingMaterial
+	else:
+		NIL
+	
+# small antennas consist of the antenna itself only	
+SmallAntenna -->
+	AntennaParts
+
+# high antennas may have also satellite dishes
+HighAntenna -->
+	50% : AntennaBasis(rand(1.4,1.8)) AntennaParts t(0,8,0) s('1,scope.sy-8,'1) SatDishes
+	else: AntennaBasis(rand(1.4,1.8)) AntennaParts
+	
+# a little thicker at the basis
+AntennaBasis(w) -->
+	50% : s('w,rand(3,6),'w) center(xz) AntennaPart
+	else: s('w,rand(3,6),'w) center(xz) i("antenna/taper.obj") AntennaPart
+	
+# recursive rule to create the complex-looking antenna structures (decreasing in thickness)
+AntennaParts -->
+	case scope.sy > 6:
+		60% : split(y){ 'rand(0.7): AntennaPart | ~1: s('0.7,'1,'0.7) center(xz) AntennaParts }
+		else: split(y){ 'rand(0.4): AntennaPart | scope.sz*rand(2,4): Slub | ~1: s('0.7,'1,'0.7) center(xz) AntennaParts }
+	else: 
+		AntennaPart
+
+AntennaPart -->
+	50%: 
+		setupProjection(0,scope.xy,'1,'1,1) projectUV(0)
+		texture(getAntennaTexture)		
+	else:
+		RailingMaterial
+
+# irregualar sized antenna element
+Slub -->
+	30% : s('1.4,'1,'1.4) center(xz) i(antennaShape) AntennaPart		# the thick slub can be cylinder or cube, so we can exchange the geometry
+	30% : s('0.7,'1,'1.6) center(xz) primitiveCube() AntennaPart		# the thin one only a cube
+	else: s('1.6,'1,'0.7) center(xz) primitiveCube() AntennaPart		# dito for the z-dir
+
+# recursive rule to invoke the satellite dishes
+SatDishes -->
+	case scope.sy > 25:
+		split(y){ 'rand(.1,.3): NIL | (rand(3,8)): SatDish | ~1: SatDishes }
+	else: NIL
+
+# satellite dish to call mars (bowie knew it)
+SatDish -->
+	50% : s(0,'1,0) center(xz) r(scopeCenter,-rand(30,45),rand(360),0) 
+		  i("antenna/dish_slantable.obj") texture(getAntennaTexture)
+	else: s(0,'1,0) center(xz) r(scopeCenter,0,rand(360),0) 
+		  i("antenna/dish.obj") texture(getAntennaTexture)

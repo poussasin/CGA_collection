@@ -1,0 +1,135 @@
+/**
+ * File:    advertisments.cga
+ * Created: 6 Apr 2009
+ * Updated: 21 October 2011
+ */
+ 
+version "2011.1"
+
+
+#######################
+#  Attributes
+#  (will be overwritten by master rule)
+
+@Hidden
+attr Balcony_Probability  = 50%: 0.7 else: 0
+@Order(1) @Range("Low","Medium","High")
+attr Level_of_Detail = "Medium"
+@Order(2)
+attr Billboard_Probability = 0.5
+@Hidden
+attr balconyD = rand(1,3)
+
+
+#######################
+#  Consts
+#
+
+const billboardW = 0.4
+const facadeBillboardProtrusion = 1
+
+const LOD_high = Level_of_Detail == "High"
+const LOD_mid  = Level_of_Detail == "Medium"
+const LOD_low  = Level_of_Detail == "Low"
+
+#######################
+#  Functions
+#
+
+getBillboard = fileRandom("*ads/billboard*")
+getFont      = fileRandom("*ads/ce_font*")
+		
+getBillboardProtrusion = case hasBalconies: balconyD+facadeBillboardProtrusion else: facadeBillboardProtrusion
+
+hasBalconies = Balcony_Probability > 0.3
+
+
+
+##############################################
+# Invoke a Billboard on the Facade
+#
+
+BillboardFacade --> 
+	case LOD_low:
+		NIL
+	case p( Billboard_Probability ) && scope.sx>20:
+		set(trim.horizontal,false) set(trim.vertical,false) alignScopeToGeometry(zUp,auto)
+		BillboardFacade(rand(10,25))
+	else: 
+		NIL
+
+BillboardFacade(width) -->
+	t(rand(scope.sx-width),rand(scope.sy-width*0.5),getBillboardProtrusion+rand) alignScopeToAxes(y)
+	s(width,width*0.5,0)  # position on facade
+	i("primitives/quadXY.obj") BillboardFacadeCheck1	
+	
+BillboardFacadeCheck1 -->
+	case overlaps(intra): NIL		# if the billboard is overlapped, we do not generate it
+	else                : s('0.5,'0.1,'1) t(0,0,-10) BillboardFacadeCheck2
+	
+BillboardFacadeCheck2 -->
+	case !inside(intra): NIL		# if the billboardholder-end is NOT inside a mass, we do not generate it (otherwise we get flying billboards)
+	else:
+		t(0,0,10) s('2,'10,'1) # transform back to the front side
+		Billboard("singlesided",getBillboard) BillboardFrame BillboardHolder("mounted")							
+
+	
+##############################################
+# Invoke a Billboard on the Roof
+#
+
+RoofBillboard -->
+	case LOD_low:
+		NIL
+	case p( Billboard_Probability ) && scope.sx > 10:
+		set(trim.horizontal,false) set(trim.vertical,false) alignScopeToGeometry(yUp,auto)
+		RoofBillboard(rand(10,25))
+	else:
+		NIL	
+
+RoofBillboard(width) -->	
+	t(0,width*0.25,'rand(0.1,0.4)) alignScopeToAxes(y)
+	s(width,width*0.5,0) center(x)  # position it on roof
+	i("primitives/quadXY.obj") RoofBillboardCheck
+
+RoofBillboardCheck -->
+	case overlaps(intra): NIL
+	else: 
+		99% : Billboard("doublesided",getBillboard) BillboardHolder("standing")
+		else: s('1,'0.5,'1) t(0,'-0.5,0) Billboard("doublesided",getFont) BillboardHolder("standing")
+	
+	
+#######################
+# Billboard
+#
+
+Billboard(type,map) -->
+	case !LOD_high:
+		set(material.colormap,map)
+	case type == "doublesided":
+		s('1,'1,billboardW) center(z) primitiveCube() set(material.colormap,map)
+	else:
+		set(material.colormap,map)
+
+BillboardFrame -->
+	case LOD_high:
+		offset(billboardW) comp(f){ border = extrude(billboardW) t(0,'-0.5,0) Wall  }
+	else:
+		NIL
+
+BillboardHolder(type) -->
+	case !LOD_high:
+		NIL
+	case type == "standing":
+		s('1,'0.5,billboardW) t(0,'-1,0) center(z) primitiveCube()
+		split(y){ ~1        : s('0.6,'1,'1) center(x) split(x){ billboardW*2: Wall | ~2: NIL | billboardW*2: Wall }
+				| billboardW: s(scope.sx+billboardW*2,'1,'3) center(xz) Wall }
+	else:
+		s('0.6,billboardW,10) center(x) primitiveCube() t(0,-billboardW,-10-billboardW*0.5) 		
+		split(x){ billboardW*2: Wall | ~1: NIL | billboardW*2: Wall }
+
+	
+	
+
+
+	

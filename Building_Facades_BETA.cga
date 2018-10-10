@@ -1,0 +1,736 @@
+/**
+ * File:    Building_Facades_BETA.cga
+ * Created: 9 Apr 2015 15:51:34 GMT
+ * Author:  chri7180
+ */
+
+version "2015.0"
+
+const materialDirectory = "assets/3D_City_Design_Assets/Material_Library/"
+const wallPath = materialDirectory + "WallTextures/"
+##XX custom type part 1:
+#import BayTypeTEST1:"rules/BuildingsBETA/Referenced/BayTypeTEST1.cga"
+
+###############################
+@Group("BAY CONFIGURATION",10) 
+
+@Range(0.5,3) @Order(10)
+attr Corner_Width = rand(1,1.5)
+
+@Range(5,20) @Order(20)
+attr Bay_Width = rand(3,8)
+
+@Range("Vertical","Random","Offset 1","","","","","") @Order(30)
+attr Bay_Pattern = "Vertical"
+
+@Range("Window","Balcony","Wall") @Order(40)
+attr Bay1 = "Window"
+@Range("Window","Balcony","Wall") @Order(41)
+attr Bay2 = "Balcony"
+@Range("Window","Balcony","Wall") @Order(42)
+attr Bay3 = randomBayType
+@Range("Window","Balcony","Wall") @Order(43)
+attr Bay4 = randomBayType
+@Range("Window","Balcony","Wall") @Order(44)
+attr Bay5 = randomBayType
+@Range("Window","Balcony","Wall") @Order(45)
+attr Bay6 = randomBayType
+@Range("Window","Balcony","Wall") @Order(46)
+attr Bay7 = ""
+@Range("Window","Balcony","Wall") @Order(47)
+attr Bay8 = ""
+@Range("Window","Balcony","Wall") @Order(48)
+attr Bay9 = ""
+
+randomBayType = 
+	50%: "Window"
+	35%: "Wall"
+	else: "Wall"
+
+
+#############################
+@Group("WINDOWS",20) 
+
+@Range(0.1,1) @Order(10)
+attr Window_To_Bay_Ratio = rand(0.5,0.9) 
+
+@Range(0,2) @Order(20)
+attr Sill_Height = rand(0.2,1.2) # Window height is derived from Sill and Header.
+
+@Range(1,4) @Order(30)
+attr Header_Height = rand(0.5,1)
+
+@Range(0.7,2) @Order(40)
+attr Panel_Width = rand(0.7,2)
+
+@Range("iRay Glass", "CE Blue", "CE Dark Blue", "CE Green", "CE Brown", "CE Black")
+@Order(50)
+attr Window_Material = 
+	20%: "iRay Glass"
+	20%: "CE Blue"
+	15%: "CE Dark Blue"
+	15%: "CE Green"
+	15%: "CE Brown"
+	else: "CE Blue"
+
+@Range(0,0.3) @Order(60)
+attr Frame_Width = 0.1
+
+@Range(0,0.3) @Order(70)
+attr Frame_Depth = Frame_Width * 2
+
+
+######################
+@Group("WALLS",40)
+ 
+@Range("Stucco Redlands Red", "Stucco Redlands Brown", "Stucco Redlands White", "Brick Brown No Mortar Rough Running Bond", "Brick Brown No Mortar Running Bond", "Brick Brown Running Bond", "Brick Grey Running Bond", "Brick Red High Contrast Running Bond", "Brick Red No Mortar Running Bond", "Brick Red Running Bond", "Brick Varied Brown Running Bond", "Brick White Dirty Running Bond", "Brick White Painted Running Bond", "Cement Block Dark Grey Running Bond", "Cement Block Grey Running Bond", "Cement Block Grey Specks Running Bond", "Cement Block Light Running Bond")
+@Order(10)
+attr Exterior_Wall_Texture = 
+	10%: "Stucco Redlands Red"
+	10%: "Stucco Redlands Brown"
+	10%: "Stucco Redlands White"
+	5%: "Brick Brown No Mortar Rough Running Bond"
+	5%: "Brick Brown No Mortar Running Bond"
+	5%: "Brick Brown Running Bond"
+	5%: "Brick Grey Running Bond"
+	5%: "Brick Red High Contrast Running Bond"
+	5%: "Brick Red No Mortar Running Bond"
+	5%: "Brick Red Running Bond"
+	5%: "Brick Varied Brown Running Bond"
+	5%: "Brick White Dirty Running Bond"
+	5%: "Brick White Painted Running Bond"
+	5%: "Cement Block Dark Grey Running Bond"
+	5%: "Cement Block Grey Running Bond"
+	5%: "Cement Block Grey Specks Running Bond"
+	else: "Cement Block Light Running Bond"
+
+@Order(20)
+attr Trim_Color = "#FFFFFF" 
+# Later: build trim color into naming scheme of wall materials? Err. I hate naming schemes to hold data.
+
+@Description("Adjustment allows scaling of wall texture.") 
+@Range(0.2, 5)
+const Wall_Texture_Scaler = 1
+
+@Range(0.2,0.7)
+const Wall_Thickness = 0.3
+
+
+#####################
+@Group("BALCONIES",50) 
+
+@Range(0,1) @Order(10)
+attr Balcony_To_Bay_Ratio = Window_To_Bay_Ratio
+
+@Range(0.01,4) @Order(20)
+attr Balcony_Extension = rand(0.5,2)
+
+@Range(0.01,2) @Order(30)
+attr Balcony_Depth = rand(0.5,2)
+
+#@Range(0.7,1.1) @Order()
+const Railing_Height = 1
+
+#@Range(0.1,0.7) @Order()
+const Balcony_Slab_Thickness = 0.2
+
+#########################################
+@Group("DOORS",60) 
+
+@Range("Balcony", "Window", "Both")
+@Order(10)
+attr Door_Location = "Balcony"
+
+@Range(0.8,1.6)
+@Order(20)
+attr Door_Width = 1.2
+
+@Range(2.4,3.1)
+@Order(30)
+attr Door_Height = 2.5
+
+#############################################
+@Group("AWNINGS",70)
+
+@Range("None","Shed") #,"Box", "Esri-Q") 
+@Order(10)
+attr Awning_Type = "Shed"
+
+@Range(0.2, 3) @Order(20)
+attr Awning_Extension = 1
+
+@Range(0.2, 3) @Order(30)
+attr Awning_Height = rand(0.7,1.5)
+
+@Color @Order(40)
+attr Awning_Color = Trim_Color
+
+
+
+#######################################################################
+#######################################################################
+#######################################################################
+#######################################################################
+
+# These attributes are named without the underscore seen in the importing rule, so that no inheritance will occur.
+@Hidden
+attr massType = ""
+@Hidden
+attr floorIndex = 0
+@Hidden
+attr floorCount = 0
+@Hidden
+attr floorHeight = 0
+
+const floorHeightTolerance = 0.1
+
+
+#################################################################
+# ENTRY POINT for importing rules.
+
+
+FloorFacades(__massType, __floorIndex, __floorCount, __floorHeight) -->
+	alignScopeToAxes(y)
+	set(massType, __massType)
+	set(floorIndex, __floorIndex)
+	set(floorCount, __floorCount)
+	set(floorHeight, __floorHeight)
+	#DEBUG
+	FloorFacades2
+
+
+FloorFacades2 -->
+	case massType == "Foundation":
+		FoundationWall
+	else: 
+		WallHandler
+#	case massType == "Ground":
+#		WallHandler
+#	case massType == "Upper":
+#		WallHandler
+#	case massType == "Extra":
+#		WallHandler
+	
+
+WallHandler -->
+	case massType == "Extra":
+		# Tip-top of the building. This could receive a special treatment, 
+		# but we leave as Wall for now.
+		#color(0.7,0.7,0.7)
+		WallTexture
+	case scope.sy < (floorHeight - floorHeightTolerance):
+		# This is not a full height wall, but it is not the extra part on top of the building. 
+		# It is likely a stepback in the building. 
+		WallTooShort
+	case geometry.isRectangular(0.5) == false:
+		# Wall is not a rectangle. Send to rectangle finder.
+		WallNonRectangular
+	case scope.sx < Bay_Width:
+		#Wall is too narrow for single Bay.
+		WindowsOnNarrowWall
+		# XX option here to use skinny windows?
+	else:
+		WallPattern
+	#split(y){ getWallBottom: Wall | getWinHeight: FloorPattern | ~1: Wall }
+	#split(y){ Cill_Height: Wall | Win_Height: FaceDispatch | ~1: Wall }
+
+#	case scope.sx < MinWallWidthForFeatures:
+#		Wall
+#	else:
+		#print(scope.sx)
+#		Wall
+WallTooShort -->
+	# XX implement later.
+	WallTexture
+
+WallNonRectangular -->
+	# This will see if a rectangle exists.
+	# XX implement later.
+	WallTexture
+
+	
+#####################################
+
+@Hidden
+attr DoorsFaceNorth = true
+@Hidden
+attr DoorsFaceSouth = true
+@Hidden
+attr DoorsFaceWest = true
+@Hidden
+attr DoorsFaceEast = true
+
+
+WallPattern -->
+	alignScopeToGeometry(zUp,0,world.lowest)
+	setupProjection(0, scope.xy, defaultWallTexSize * Wall_Texture_Scaler, defaultWallTexSize * Wall_Texture_Scaler)
+	projectUV(0) 
+	texture(wallPath + Exterior_Wall_Texture + ".jpg")
+	WallPatternCorners
+
+WallPatternCorners -->
+	# Check for Corners
+	case Corner_Width > 0:
+		split(x){ Corner_Width : Wall | ~1: WallPatternBays | Corner_Width : Wall}
+	else:  
+		WallPatternBays
+
+
+WallPatternBays -->
+	#case BayOffsetHalf == false:
+	split(x){~Bay_Width: Bay}*
+	#else:
+		#XX Add: Bay offsets - 1/2 for running bond, other fractions might look cool.
+
+
+# Bay type by index mapped to hard-indexed BayTypes in the inspector.
+bayTypeByAttributeIndex(index) = 
+	case index == 1: Bay1
+	case index == 2: Bay2
+	case index == 3: Bay3
+	case index == 4: Bay4
+	case index == 5: Bay5
+	case index == 6: Bay6
+	case index == 7: Bay7
+	case index == 8: Bay8
+	case index == 9: Bay9
+	else: "Wall"
+
+const bayTypeList = bayOrderBuild("", 1)
+const bayTypeCount = listSize(bayTypeList)
+bayType(index) = listItem(bayTypeList, index)
+
+# Recursive function to generate string list of types
+bayOrderBuild(listSoFar, index) =
+	case index < 10:  
+		case bayTypeByAttributeIndex(index) == "":
+			bayOrderBuild(listSoFar, index + 1)
+		else:	
+			bayOrderBuild(listSoFar + bayTypeByAttributeIndex(index) + ";", index + 1)
+	else:
+		listSoFar
+
+Bay -->
+	# Test for occlusion.
+	t(0,0,0.1)
+	BayOcclusionTest
+
+BayOcclusionTest -->
+	#case touches(inter):
+	#	t(0,0,-0.1)
+		#color(1,0,0)
+	#	WallTexture
+	#else:
+		t(0,0,-0.1)
+		BayAfterOcclusionTest	
+
+BayAfterOcclusionTest -->
+	case Bay_Pattern == "Vertical":
+		BayType(bayType(wrapIndex(split.index, bayTypeCount)))
+	case Bay_Pattern == "Offset 1":
+		BayType(bayType(wrapIndex(split.index + bayOffset, bayTypeCount)))
+	case Bay_Pattern == "Random":
+		BayType(bayType(wrapIndex(rint(rand(0 - 0.4,bayTypeCount + 0.4)), bayTypeCount)))
+	else:
+		Wall
+
+bayOffset = case even(floorIndex): 1 else: 0
+wrapIndex(index, total) = index % total
+
+BayType(type) --> 
+	case type == "Window": BayTypeWindows
+	case type == "Wall": Wall
+	case type == "Balcony": BayTypeBalcony
+	##XX custom type part 2:
+	#case type == "BayTypeTEST1": BayTypeTEST1.Bay
+	else: Wall
+
+const doorsOnBalcony = Door_Location == "Balcony" || Door_Location == "Both"
+const doorsOnWindow = Door_Location == "Window" || Door_Location == "Both"
+
+###################################################
+# Balcony Bay
+
+BayTypeBalcony -->
+	case floorIndex == 1: # XX This will break if foundation is removed.
+		case doorsOnThisWall && doorsOnBalcony:
+			DoorBay
+		else:
+			WindowBay		
+	case floorIndex == 2 && awningsOnGroundFloor:
+		# If ground floor has awnings, don't put a balcony above it.
+		WindowBay
+	else:
+		BalconyBay
+	
+@Hidden
+attr OmitBalcony = false
+@Hidden
+attr OmitSillWall = false
+
+doorsOnThisWall = (geometry.isOriented(world.north) && DoorsFaceNorth) 
+	|| (geometry.isOriented(world.south) && DoorsFaceSouth)
+	|| (geometry.isOriented(world.west) && DoorsFaceWest)
+	|| (geometry.isOriented(world.east) && DoorsFaceEast)
+
+
+BalconyBay -->
+	set(OmitSillWall, true)
+	split(y){windowHeight: BalconyRoughOpeningX | ~1: Wall }
+
+
+BalconyRoughOpeningX -->
+	split(x) {~1: Wall | Balcony_To_Bay_Ratio * Bay_Width: BalconyRoughOpening | ~1: Wall}
+
+BalconyRoughOpening -->
+	deleteUV(0)
+	Awning
+	BalconyWindows
+	BalconyExtension
+	
+const _Balcony_Depth_Adj = case Balcony_Depth <= 0: 0.01 else: Balcony_Depth
+
+
+BalconyWindows -->
+	BalconyWindowsPanels
+	extrude(-_Balcony_Depth_Adj)
+	comp(f){top: NIL| front: BalconyFloorFix | back: NIL | side: BalconySideWalls}
+
+BalconySideWalls -->
+	t(0, Wall_Thickness, 0)
+	reverseNormals 
+	WallTexture
+
+	
+BalconyFloorFix -->
+	extrude(-0.04)
+	BalconyTexture
+
+BalconyWindowsPanels -->
+	t(0,0, -_Balcony_Depth_Adj)
+	WindowPanels
+
+BalconyExtension -->
+	case OmitBalcony: NIL
+	else:
+		s('1,Balcony_Slab_Thickness,0)
+		t(0,-Balcony_Slab_Thickness,0)
+		extrude(Balcony_Extension)
+		comp(f) {world.up: BalconySlabTop}
+		BalconySlab
+
+BalconySlabTop -->
+	offset(-Frame_Width)
+	comp(f) {border: BalconyRailGuide}
+	
+BalconyRailGuide -->
+	case comp.index > 0:
+		extrude(Railing_Height)
+		comp(f){1: BalconyRailing | 2: WindowGlass}
+	else:
+		NIL
+
+BalconyRailing --> X.#extrude(Frame_Width)
+	
+	
+BalconySlab -->
+	comp(f){world.up: BalconyTexture | all: BalconyColor}
+
+BalconyTexture -->
+	#alignScopeToAxes(y)
+	setupProjection(0, scope.xy, 1, 1)
+	projectUV(0) 
+	texture(tempBalconyTexture)
+	
+BalconyColor -->
+	color(Trim_Color)
+
+const tempBalconyTexture = "asphalt_brighter.jpg"	
+
+sillWallHeight = 
+	case OmitSillWall: 0
+	else: Sill_Height 
+	
+windowHeight = 
+	case OmitSillWall: floorHeight - Header_Height
+	else: floorHeight - Sill_Height - Header_Height
+
+#########################################################################
+
+DoorBay -->
+	# Below should be replaced with better logic.
+	set(OmitSillWall, true)
+	split(y){windowHeight: DoorRoughOpeningX | ~1: Wall}
+
+#@Range(0,1)
+const Door_To_Bay_Ratio = Window_To_Bay_Ratio
+
+DoorRoughOpeningX -->
+	split(x) {~1: Wall | Door_To_Bay_Ratio * Bay_Width: DoorRoughOpening | ~1: Wall}
+
+DoorRoughOpening -->
+	deleteUV(0)
+	Awning
+	DoorType(scope.sx)
+
+DoorType(widthAvailable) -->
+	case widthAvailable < Door_Width:
+		WallTexture 
+	case widthAvailable > Door_Width && widthAvailable < (Door_Width * 2.5):    
+		#print("D")
+		split(x){~1: DoorFill | Door_Width: DoorSection(1) | ~1: DoorFill}
+	case widthAvailable > (Door_Width * 2.5) && widthAvailable < (Door_Width * 3.5):    
+		#print("DD")
+		split(x){~1: DoorFill | 2 * Door_Width: DoorSection(2) | ~1: DoorFill}
+	else:
+		#print("DDF")
+		split(x){~1: DoorFill | 
+			2 * Door_Width: DoorSection(2) | 
+			{0.5 * Door_Width: DoorFill | 2 * Door_Width: DoorSection(2)}* |
+			~1: DoorFill}
+
+DoorSection(doors) --> 
+	split(y){Door_Height: DoorFrame(doors) | ~1: DoorFramedGlass}
+
+DoorFrame(doors) -->
+	split(x){Frame_Width: DoorFraming | 
+		~1: DoorFrame2(doors) | 
+		Frame_Width: DoorFraming}
+
+DoorFrame2(doors) -->
+	split(y){~1: Doors(doors) | Frame_Width: DoorFraming} 
+
+Doors(doors) --> 
+	case doors == 1:
+		Door("Right")
+	else:
+		split(x){'0.5: Door("Left") | '0.5: Door("Right")} 
+
+const doorEdge = 0.04
+
+Door(side) -->
+	t(0,0,-Frame_Depth / 2)
+	#Handle(side)
+ 	offset(-doorEdge)
+ 	comp(f){border: DoorEdge | inside: WindowGlass}
+ 	
+Handle(side) -->
+	split(y){1: NIL | 0.03: Handle2(side) | ~1: NIL}
+Handle2(side) -->
+	case side == "Right":
+		split(x){'0.1: NIL | ~1: HandleUni | '0.3: NIL}
+	else:
+		split(x){'0.3: NIL | ~1: HandleUni | '0.1: NIL}
+HandleUni --> extrude(0.05)
+
+
+DoorEdge --> color("#F0F0F0") X.
+
+DoorGlass -->
+	t(0,0,-Frame_Depth / 2)
+	WindowGlass
+
+DoorFill -->
+	split(y){Sill_Height: DoorWindowSill | 
+		(Door_Height - Sill_Height): DoorFramedGlass | 
+		~1: DoorFramedGlass}
+
+DoorWindowSill --> WallTexture
+
+DoorFramedGlass --> 
+	offset(-Frame_Width)
+	comp(f) { border: DoorFraming | inside: DoorGlass} 
+
+DoorFraming -->
+	deleteUV(0)
+	color(Trim_Color)
+	#extrude(-Frame_Depth)
+
+
+
+
+Rand --> color(rand,rand,rand)
+
+
+
+
+
+
+
+
+
+
+
+
+#########################################################################
+
+
+const defaultWallTexSize = 4
+
+Wall -->#WallDone.
+	extrude(-Wall_Thickness)
+	trim
+	
+WallTexture -->
+	alignScopeToAxes(y)
+	setupProjection(0, scope.xy, defaultWallTexSize * Wall_Texture_Scaler, defaultWallTexSize * Wall_Texture_Scaler)
+	projectUV(0) 
+	texture(wallPath + Exterior_Wall_Texture + ".jpg")
+
+FoundationWall -->
+	# XX temp fix to cover floor slab on ground floor.
+	t(0,-0.5,0)
+	s('1,scope.sy + 0.5,'1)
+	WallTexture #XX Apply Foundation Texture here. 
+
+
+#####################################
+BayTypeWindows -->
+	case doorsOnThisWall && doorsOnWindow:
+		case floorIndex == 1: # XX This will break if foundation is removed.
+			DoorBay
+		else:
+			WindowBay # X Window bays might need kick panels on ground floor here. 		
+	else:
+		WindowBay
+
+WindowsOnNarrowWall -->
+	split(y){sillWallHeight: WallTexture | windowHeight: WindowRoughOpeningXNarrow | ~1: WallTexture }
+WindowRoughOpeningXNarrow -->
+	split(x) {~1: Wall | Window_To_Bay_Ratio * Bay_Width: WindowPanels | ~1: Wall}
+
+WindowBay -->
+	split(y){sillWallHeight: Wall | windowHeight: WindowRoughOpeningX | ~1: Wall }
+	
+WindowRoughOpeningX -->
+	split(x) {~1: Wall | Window_To_Bay_Ratio * Bay_Width: WindowRoughOpening | ~1: Wall}
+
+WindowRoughOpening -->
+	WindowPanels
+	
+WindowPanels -->
+	split(y){ Frame_Width : Frame | ~1: WindowPanelsX | Frame_Width : Frame }
+
+WindowPanelsX -->
+	split(x){ Frame_Width: Frame
+		| { ~Panel_Width: t(0,0,-Frame_Depth / 2) WindowGlass | Frame_Width: Frame }*}
+
+Frame -->
+	deleteUV(0)
+	color(Trim_Color)
+	#extrude(-Frame_Depth)
+
+WindowGlass -->
+	case Window_Material == "iRay Glass":
+		GlassMaterial(0.35,0.37,0.5,0.8,0.8,0.8,0.8,128,0.8)
+	case Window_Material == "CE Blue":
+		GlassMaterial(0.7,0.75,1,0.8,0.8,0.8,0.8,50,0.6)
+	case Window_Material == "CE Dark Blue":
+		GlassMaterial(0.2,0.2,0.25,0.8,0.8,0.8,0.6,50,0.8)
+	case Window_Material == "CE Green":
+		GlassMaterial(0.4,0.5,0.4,0.8,0.8,0.8,0.8,50,0.6)
+	case Window_Material == "CE Brown":
+		GlassMaterial(0.3,0.25,0.2,0.8,0.8,0.8,0.8,50,0.6)
+	case Window_Material == "CE Black":
+		GlassMaterial(0.1,0.1,0.1,0.8,0.8,0.8,0.7,50,0.8)
+	else:
+		# Same as iRay.
+		GlassMaterial(0.35,0.37,0.5,0.8,0.8,0.8,0.8,128,0.8)
+
+GlassMaterial(colorR,colorG,colorB,specR,specG,specB,reflectivity,shininess,opacity) -->
+	color(colorR,colorG,colorB)
+	deleteUV(0)
+	set(material.specular.r,specR) 
+	set(material.specular.g,specG) 
+	set(material.specular.b,specB)
+	set(material.reflectivity,reflectivity) 
+	set(material.shininess,shininess) 
+	set(material.opacity,opacity)
+	report("Glass Area", geometry.area)
+	#print("m="+massType+", fi="+floorIndex)
+	#test2
+
+
+#############################################################
+
+const shedEdgeHeight = 0.2
+
+
+
+awningsOnGroundFloor = Awning_Type == "Shed"
+
+Awning -->
+	case floorIndex == 1: 
+		AwningShed
+	else:
+		NIL
+
+AwningShed -->
+	extrude(Awning_Extension)
+	comp(f) {world.up :
+		roofShed(45, 2)
+		s('1, Awning_Height, '1)
+		translate(rel, world, 0, -scope.sy, 0)
+		comp(f) {world.down : AwningShedEdge | front: NIL | all: AwningShedTexture}
+	}
+
+AwningShedEdge -->
+	extrude(shedEdgeHeight) 
+	comp(f) {horizontal: NIL | front: NIL | all: AwningShedTexture}
+
+AwningShedTexture -->
+	color(Awning_Color) 
+	#AddDirtMap
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+###########################################################
+
+DEBUG-->
+	print("bayTypeList = " + bayTypeList)
+	print("bayTypeCount = " + bayTypeCount)
+	print("bayType(0) = " + bayType(0)) 
+	print("bayType(1) = " + bayType(1)) 
+	print("bayType(2) = " + bayType(2)) 
+	print("bayType(3) = " + bayType(3)) 
+	print("bayType(4) = " + bayType(4)) 
+	print("bayType(5) = " + bayType(5)) 
+	print("bayType(6) = " + bayType(6)) 
+	print("bayType(7) = " + bayType(7)) 
+	print("bayType(8) = " + bayType(8))
+	print("=============================")
+	print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+	print(wrapIndex(0, 4))
+	print(wrapIndex(1, 4))
+	print(wrapIndex(2, 4))
+	print(wrapIndex(3, 4))
+	print(wrapIndex(4, 4))#0
+	print(wrapIndex(5, 4))#1
+	print(wrapIndex(6, 4))#2
+	print(wrapIndex(7, 4))#3
+	print(wrapIndex(8, 4))#0
+	print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+	NIL
+
+###################################################
+
+# utils
+even(val) 	= val % 2 == 0
+uneven(val) = val % 2 == 1
+
+
+
+
+
+

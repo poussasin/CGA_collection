@@ -1,0 +1,452 @@
+/**
+ * File:    3D_Text.cga
+ * Created: 13 May 2014 14:03:42 GMT
+ * Author:  chri7180
+ */
+
+version "2015.0"
+
+
+# USEFUL FOR TESTING: 
+# the quick brown fox jumps over the lazy dog
+# THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG
+# Special Char Test:;,.'[]{}~!@#$%^&()-_=+*!:><|?/\
+
+const assetsDirectory = "Zoning_and_Land_Use/Tools_3D_Text/" + Font + "/"
+const assetsDirectoryLower = assetsDirectory + "Lower/"
+
+
+
+@Group("DISPLAY", 10) @Order(10)
+@Order(1)
+attr Text = "Floating;3D TEXT;is Cool"
+
+@Group("DISPLAY") @Order(20)
+@Color
+attr Color = "#00FF00"
+
+@Group("DISPLAY") @Order(30)
+attr White_Underlay = false
+
+@Group("DISPLAY") @Order(40)
+@Range(0,1)
+attr Transparency = 0
+
+@Group("DISPLAY") @Order(50)
+@Range("Arial")
+attr Font = "Arial"
+
+
+
+@Group("POSITION & SIZE", 20) @Order(10)
+@Range(0,200)
+attr Elevation = 0
+
+@Group("POSITION & SIZE") @Order(20)
+@Range(0,200)
+attr Font_Height = 100
+
+@Group("POSITION & SIZE") @Order(30)
+@Range(0,100)
+attr Font_Depth = 40
+
+@Group("POSITION & SIZE") @Order(40)
+@Range(-180,180)
+attr Rotation = 0
+
+@Group("POSITION & SIZE") @Order(50)
+@Range(-90,90)
+attr Tilt = 0
+
+@Group("RELATIVE SIZE") @Order(60)
+@Range(0,1)
+attr Kerning = 0.15  # XX Change to percent
+
+# XX Implement Later
+#@Group("POSITION & SIZE") @Order(70)
+#@Range(0,30)
+#attr Horizontal_Stretch = 40
+
+@Group("RELATIVE SIZE",30) @Order(70)
+@Range(0,1)
+attr Line_Spacing = 0.5
+
+@Group("RELATIVE SIZE") @Order(80)
+@Range(0,1)
+attr Stretch_Horizontal = 0
+
+
+
+
+/*
+# Disabled Gradient code (too many polygons!):
+
+@Group("GRADIENT DISPLAY", 40) @Order(20)
+attr Use_Gradient = false
+
+@Group("GRADIENT DISPLAY", 40) @Order(20)
+@Range(2,10)
+attr Gradient_Steps = 4
+
+@Group("GRADIENT DISPLAY") @Order(30)
+@Color
+attr Color_Front = Color
+
+@Group("GRADIENT DISPLAY") @Order(40)
+@Color
+attr Color_Back = "#ffffff"
+*/
+
+@StartRule
+Generate -->
+	color(Color)
+	set(material.opacity, 1 - Transparency)
+	alignScopeToAxes(y)
+	# XX Is Tilt tilting around the right Z axis?
+	# r(-Tilt, Rotation, 0)
+	r(-Tilt, 0, 0)
+	translate(rel, world, 0, Elevation, 0)
+	PrintLines(Text, 1)
+
+
+@Hidden
+attr Line = ""
+@Hidden
+attr ReturnAt = 0
+
+const Max_Lines = 20
+
+#XX Note: multiple semi-colons in a row just make spaces. Not sure why. Not important for now.
+PrintLines(myString, lineIndex) -->
+	case len(myString) <= 0 || lineIndex > Max_Lines:
+		NIL
+	else:
+		case find(myString, ";", 0) > 0:
+			set(ReturnAt, find(myString, ";", 0))
+			Letters(substring(myString, 0, ReturnAt), Font_Height)
+			t(0, -(Font_Height * (1 + Line_Spacing)), 0)
+			PrintLines(substring(myString, ReturnAt + 1, Max_String_Length), lineIndex + 1)
+		else:
+			Letters(substring(myString, 0, Max_String_Length), Font_Height)
+			NIL
+			
+
+
+
+# Used during recursion on Text:
+
+@Hidden
+attr Letter = ""
+@Hidden
+attr SizeYTopToBase = 0
+@Hidden
+attr SizeY = 0
+@Hidden
+attr SizeX = 0
+@Hidden
+attr Asset = ""
+@Hidden
+attr xPerYRatio = 0
+@Hidden
+attr Scalar = 0
+@Hidden
+attr OffsetY = 0
+
+# For the space character.
+const spaceRatioXperY = 0.3
+const Max_String_Length = 1000
+const yTopToBase = 9.94
+const yMidToBase = 7.35
+const yBaseToFoot = 2.89
+const yMidToFoot = yMidToBase + yBaseToFoot
+const yTopToFoot = yTopToBase + yBaseToFoot
+const yTopToMid = yTopToBase - yMidToBase
+
+#scalar(mySize) = yTopToBase 
+
+
+Letters(myString, mySize) -->
+	set(SizeYTopToBase, mySize)
+	set(Scalar, SizeYTopToBase / yTopToBase)
+	#t(0, 0, scope.sz - Font_Depth) 
+	PrintLetters(myString, len(myString))
+
+	
+PrintLetters(myString, n) -->
+	case n > 0:
+		set(Letter, substring(myString, 0, 1))
+		set(Asset, getLetterAsset(Letter))
+		PrintLettersHandleSpecialCursorMoves(myString, n)
+	else:
+		NIL
+
+
+PrintLettersHandleSpecialCursorMoves(myString, n) -->
+	case Letter == " ":
+		# Printing a space only moves the cursor. No asset used.
+		set(SizeX, (SizeYTopToBase * spaceRatioXperY)) 
+		t(SizeX, 0, 0) 
+		PrintLettersRecurse(myString, n)
+	else:
+		# All asset setup here.
+		PrintLettersAssetSetup(myString, n)
+		
+PrintLettersAssetSetup(myString, n) -->
+	case !fileExists(Asset):
+		print("no file for asset='"+Asset+"'")
+		PrintLettersRecurse(myString, n)
+	else:
+		# We have SizeY, but that is only top to Base.
+		# We have an asset file, so we get ratio of x to y there.
+		set(xPerYRatio, assetInfo(Asset, sx) / assetInfo(Asset ,sy))
+		#SizeYTopToBase
+		PrintLettersFindYSize(myString, n)
+		
+
+PrintLettersFindYSize(myString, n) -->
+	case midToBaseLetter(Letter):
+		set(SizeY, yMidToBase)
+		set(OffsetY, 0)
+		PrintLettersFindXSize(myString, n)
+	case midToFootLetter(Letter):
+		set(SizeY, yMidToFoot)
+		set(OffsetY, -yBaseToFoot)
+		PrintLettersFindXSize(myString, n)
+	case topToFootLetter(Letter):
+		set(SizeY, yTopToFoot)
+		set(OffsetY, -yBaseToFoot)
+		PrintLettersFindXSize(myString, n)
+	case Letter == "," :
+		set(SizeY, yBaseToFoot)
+		set(OffsetY, -yBaseToFoot * (0.66 ))
+		PrintLettersFindXSize(myString, n)
+	case Letter == "." :
+		set(SizeY, yBaseToFoot * (0.4))
+		set(OffsetY, 0)
+		PrintLettersFindXSize(myString, n)
+	case Letter == "'" :
+		set(SizeY, yTopToBase * 0.33)
+		set(OffsetY, yTopToBase - SizeY)
+		PrintLettersFindXSize(myString, n)
+	case Letter == "~" :
+		set(SizeY, yTopToBase * 0.2)
+		set(OffsetY, yTopToBase * 0.5)
+		PrintLettersFindXSize(myString, n)
+	case Letter == "^" :
+		set(SizeY, yTopToBase * 0.5)
+		set(OffsetY, yTopToBase * 0.5)
+		PrintLettersFindXSize(myString, n)
+	case Letter == "-" :
+		set(SizeY, yBaseToFoot * 0.4)
+		set(OffsetY, yTopToBase * 0.5)
+		PrintLettersFindXSize(myString, n)
+	case Letter == "_" :
+		set(SizeY, yBaseToFoot * 0.4)
+		set(OffsetY, -SizeY)
+		PrintLettersFindXSize(myString, n)
+	case Letter == "=" :
+		set(SizeY, yTopToBase * 0.4)
+		set(OffsetY, yTopToBase * 0.3)
+		PrintLettersFindXSize(myString, n)
+	case Letter == "+" :
+		set(SizeY, yTopToBase * 0.6)
+		set(OffsetY, yTopToBase * 0.2)
+		PrintLettersFindXSize(myString, n)
+	case Letter == "*" :
+		set(SizeY, yTopToBase * 0.5)
+		set(OffsetY, yTopToBase * 0.5)
+		PrintLettersFindXSize(myString, n)
+	case Letter == ":" :
+		set(SizeY, yMidToBase)
+		set(OffsetY, 0)
+		PrintLettersFindXSize(myString, n)
+	case Letter == ">" :
+		set(SizeY, yMidToBase)
+		set(OffsetY, yTopToMid * 0.5)
+		PrintLettersFindXSize(myString, n)
+	case Letter == "<" :
+		set(SizeY, yMidToBase)
+		set(OffsetY, yTopToMid * 0.5)
+		PrintLettersFindXSize(myString, n)
+	case Letter == "|" :
+ 		set(SizeY, yTopToFoot)
+		set(OffsetY, -yBaseToFoot)
+		PrintLettersFindXSize(myString, n)
+	#case letter == "\\" : getAssetPath(letter) + "_backslash.obj"
+	#case letter == "\"" : getAssetPath(letter) + "_quote.obj"		
+	else:
+		# Most letters are in this else case.
+		set(SizeY, yTopToBase)
+		set(OffsetY, 0)
+		PrintLettersFindXSize(myString, n)
+
+
+PrintLettersFindXSize(myString, n) -->
+	# Adjust to scale.
+	set(SizeY, SizeY * Scalar)
+	set(OffsetY, OffsetY * Scalar)
+	set(SizeX, SizeY * xPerYRatio * (1 + Stretch_Horizontal))
+	s(SizeX, SizeY, Font_Depth)
+	PrintLetter(OffsetY)
+	PrintLettersRecurse(myString, n)
+
+PrintLettersRecurse(myString, n) -->
+	# Move cursor to the right.
+	t(SizeX + (KernSpace * (1 + Stretch_Horizontal)), 0, 0)
+	PrintLetters(substring(myString, 1, Max_String_Length), n - 1)
+
+KernSpace = SizeY * Kerning
+
+PrintLetter(offsetY) -->
+		t(0, offsetY, 0)
+		i(Asset)
+		#GradientLetter
+		WhiteUnderlay
+
+WhiteUnderlay -->
+	case White_Underlay:
+		s('1,'1, '0.5)
+		t(0,0,scope.sz)
+		X.
+		t(0,0,-scope.sz)
+		color(1,1,1)
+		X.
+	else: 
+		X.
+
+/*
+#Too many polygons generated by below code.
+ 
+GradientLetter -->
+	case Use_Gradient:
+		s('1,'1, '(1 / Gradient_Steps))
+		t(0,0,-scope.sz)
+		GradientLetter(1)
+	else:
+		Letter.
+
+GradientLetter(index) -->
+	case index > Gradient_Steps:
+		NIL
+		
+	else:
+		print("> "+scope.sz)
+		#print("> "+(Font_Depth / Gradient_Steps))
+		t(0,0,scope.sz)
+		#color(rand(1),rand(1),rand(1))
+		color(colorRamp("yellowToRed",(index / Gradient_Steps))) X.
+		X.
+		GradientLetter(index + 1)
+*/	
+
+
+
+
+
+/*
+	ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789,.'[]{}~!@#$%^&()-_=+
+	#"
+	#\
+	case letter == "*" : 55 
+	case letter == "|" : 61 
+	case letter == "?" : 62 
+	case letter == "/" : 63 
+	case letter == ":" : 42 
+	case letter == "<" : 38 
+	case letter == ">" : 39 
+	#carraige return
+	#case letter == ";" : 40 
+*/	
+
+getLetterAsset(letter) = 
+	# These characters cannot be used for filenames:  *!:><|?/\
+	case letter == " " : ""
+	case letter == "*" : getAssetPath(letter) + "_asterisk.obj"
+	case letter == "!" : getAssetPath(letter) + "_bang.obj"
+	case letter == ":" : getAssetPath(letter) + "_colon.obj"
+	case letter == ">" : getAssetPath(letter) + "_greaterthan.obj"
+	case letter == "<" : getAssetPath(letter) + "_lessthan.obj"
+	case letter == "|" : getAssetPath(letter) + "_pipe.obj"
+	case letter == "?" : getAssetPath(letter) + "_question.obj"
+	case letter == "/" : getAssetPath(letter) + "_slash.obj"
+	case letter == "\\" : getAssetPath(letter) + "_backslash.obj"
+	case letter == "\"" : getAssetPath(letter) + "_quote.obj"
+	else: getAssetPath(letter) + letter + ".obj"
+
+
+getAssetPath(letter) = 
+	case isLowercase(letter): assetsDirectoryLower
+	else: assetsDirectory
+
+isLowercase(letter) = 
+	case letter == "a" : true
+	case letter == "b" : true
+	case letter == "c" : true 
+	case letter == "d" : true
+	case letter == "e" : true
+	case letter == "f" : true
+	case letter == "g" : true
+	case letter == "h" : true
+	case letter == "i" : true
+	case letter == "j" : true
+	case letter == "k" : true
+	case letter == "l" : true
+	case letter == "m" : true
+	case letter == "n" : true
+	case letter == "o" : true
+	case letter == "p" : true
+	case letter == "q" : true
+	case letter == "r" : true
+	case letter == "s" : true
+	case letter == "t" : true
+	case letter == "u" : true
+	case letter == "v" : true
+	case letter == "w" : true
+	case letter == "x" : true
+	case letter == "y" : true
+	case letter == "z" : true
+	else: false
+	
+midToBaseLetter(letter) = 	
+	case letter == "a" : true
+	case letter == "c" : true 
+	case letter == "e" : true
+	case letter == "m" : true
+	case letter == "n" : true
+	case letter == "o" : true
+	case letter == "r" : true
+	case letter == "s" : true
+	case letter == "u" : true
+	case letter == "v" : true
+	case letter == "w" : true
+	case letter == "x" : true
+	case letter == "z" : true
+	else: false
+
+midToFootLetter(letter) = 
+	case letter == "g" : true
+	case letter == "p" : true
+	case letter == "q" : true
+	case letter == "y" : true
+	else: false
+
+topToFootLetter(letter) = 
+	case letter == "j" : true
+	else: false
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
