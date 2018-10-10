@@ -1,0 +1,113 @@
+/**
+ * File:    pompeiiStreets.cga
+ * Created: 30 Oct 2008
+ * Updated: 6 June 2014
+ * Author:  Esri R+D Center Zurich
+ */
+
+version "2014.0"
+
+
+
+####################################################
+# Control Attributes
+#
+
+@Order(1) @Range("High","Low")
+attr LevelOfDetail 	= "Low"
+
+@Group("Sidewalk Options",2) 
+@Order(1) @Range(0.1,1)
+attr SidewalkHeight = 0.3
+@Order(2) @Range(0.2,2)
+attr StoneWidth 	= SidewalkHeight*1.7
+@Order(3) @Range(0.4,5)
+attr StoneLength 	= StoneWidth*2.2
+
+
+
+####################################################
+# Default Start Rules for Street Networks
+#
+
+@StartRule
+Street				--> StonyStreetGround
+Joint 				--> StonyStreetGround
+Crossing 			--> StonyStreetGround		
+Junction 			--> StonyStreetGround
+JunctionEntry 		--> StonyStreetGround	
+Freeway 			--> StonyStreetGround
+FreewayEntry 		--> StonyStreetGround
+Roundabout 			--> StonyStreetGround
+RoundaboutIsland 	--> StonyStreetGround
+RoundaboutEntry 	--> StonyStreetGround
+Sidewalk			--> StonySidewalk
+
+
+
+####################################################
+# Street Texturing
+#
+
+const streetTexColor 	= "streets/streets.color.jpg"
+const streetTexBump 	= "streets/streets.bump.jpg"
+const streetTexSize		= 20
+const dirtmap 			= "general/dirtmaps/dirtmap.07.jpg"
+
+StonyStreetGround -->
+	StonyStreetGround(streetTexSize)
+
+StonyStreetGround(size) -->
+	# color texture
+	setupProjection(0,world.xz,size,size,0.25) projectUV(0) 
+	texture(streetTexColor)
+	# bump map
+	deleteUV(1)		# delete default street uv set 1, becomes copy of street uv set 0, necessary for bump mapping
+	set(material.bumpmap,streetTexBump)
+	set(material.bumpValue,-1)
+	# dirt map
+	setupProjection(2,world.xz,size*5,size*5,0.2) projectUV(2)
+	set(material.dirtmap,dirtmap)
+
+
+
+####################################################
+# Sidewalk Construction
+#
+
+const lowLOD 			= LevelOfDetail == "Low"
+const sidewalkTexColor 	= "streets/trottoir.02.color.jpg"
+const sidewalkTexSize	= 12
+stoneAsset 				= 30% : "streets/stoneA.obj"
+			 			  30% : "streets/stoneB.obj"
+		 	 			  else: "streets/stoneC.obj"
+
+StonySidewalk -->
+	case lowLOD:
+		split(v,unitSpace,0){ StoneWidth: RollingStones | ~1: Pavement }
+	else:
+		Street
+		split(v,unitSpace,0){ StoneWidth*0.7: NIL | ~1: Pavement }
+		set(trim.vertical,false)
+		comp(f){all: split(y){ StoneWidth: RollingStones } }
+
+RollingStones --> 
+	case lowLOD:
+		extrude(world.up,SidewalkHeight*1.1) 
+		color("#dddddd") StonyStreetGround(streetTexSize*1.5)
+	case scope.sx > StoneLength*1.2: 
+		split(x){ StoneLength*rand(0.8,1.2): Stone | ~1: RollingStones } 	# recursive call
+	else:  
+		Stone
+	
+Stone --> 
+	case scope.sy < StoneWidth*0.5: 
+		NIL 
+	else:
+		t(0,'rand(-0.1,0.1),0) s('1,'rand(0.9,1.1),SidewalkHeight*rand(1.1,1.3))
+		i(stoneAsset)
+	
+Pavement  -->
+	translate(rel,world,0,SidewalkHeight,0)
+	setupProjection(0,world.xz,sidewalkTexSize,sidewalkTexSize) projectUV(0) 	
+	texture(sidewalkTexColor)

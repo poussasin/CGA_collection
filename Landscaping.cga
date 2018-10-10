@@ -1,0 +1,204 @@
+/**
+ *
+ Authors:
+ Matthias Buehler, Esri R&D Center Zurich
+ Seiler & Seiler, http://seilerseiler.com
+ */
+
+version "2014.1"
+
+import centeredText : "rules/helpers/CenteredText.cga"
+
+############################################################
+# ATTRIBUTES
+############################################################
+
+@Group("TREES", 0)						@Order(0)
+attr treeDensity						= .5
+@Group("TREES")							@Order(1)
+attr treeHeight							= 5
+@Group("TREES")							@Order(2)
+attr treeWidth							= 2
+
+
+@Group("TREE DISTRIBUTION",1)			@Order(0)			@Range("scatter", "aligned grid", "grid", "recursive")
+attr distributionType					= "recursive"
+@Group("TREE DISTRIBUTION")				@Order(1)
+attr scatterBaseDimension				= 7
+
+@Group("LINEAR TREE DISTRIBUTION",2)	@Order(0)
+attr treeDist_length					= 12
+@Group("LINEAR TREE DISTRIBUTION")		@Order(1)
+attr treeHeight_width					= 6
+@Group("LINEAR TREE DISTRIBUTION")		@Order(2)
+attr treeProb							= 1
+
+
+
+
+
+############################################################
+# VEGETATION ON STREET SHAPE
+############################################################
+
+@StartRule
+Street -->
+	TreeAlley
+
+Sidewalk -->
+	NIL
+
+############################################################
+# VEGETATION ON SHAPE
+############################################################
+
+@StartRule
+Trees -->
+	report("Green Area", geometry.area())
+	centeredText.MeasureText
+	DistributeTrees
+
+DistributeTrees -->
+	case distributionType == "scatter":
+		scatter(surface,geometry.area() * treeDensity / 100, uniform) { PutTree }
+		NIL
+	case distributionType == "aligned grid":
+		split(x, noAdjust) {~scatterBaseDimension: split(z) {~scatterBaseDimension: GridTree }*}*
+	case distributionType == "grid":
+		split(x) {~scatterBaseDimension: split(z) {~scatterBaseDimension: GridTree }*}*
+	case distributionType == "recursive":
+		alignScopeToGeometry(yUp, any, longest)
+		RecursiveTreeDistribution
+	else:
+		NIL
+
+GridTree -->
+	case geometry.area < .3*scatterBaseDimension*scatterBaseDimension:
+		NIL
+	else:
+		case p(treeProb):
+			PutTree
+		else:
+			NIL
+
+RecursiveTreeDistribution -->
+	case scope.sx < scatterBaseDimension:
+		GridTree		# remove too small spots
+	else:
+		alignScopeToGeometry(yUp, any, longest)
+		split(x) {'rand(.3,.7) : RecursiveTreeDistribution | ~1 : RecursiveTreeDistribution}
+
+
+############################################################
+# WATERBODY ON SHAPE
+############################################################
+
+waterbodyHeight 		= 0.45
+waterbodySittingWidth 	= 0.5
+waterdepth 				= 0.35
+waterbodyInnerHeight	= 0.05
+
+@StartRule
+Waterbody -->
+	centeredText.MeasureText
+	report("Waterbody Area", geometry.area())
+	extrude(world.up, waterbodyHeight)
+	comp(f) {	side:
+					WaterbodyMaterial
+				| top:
+					offset(-waterbodySittingWidth)
+					comp(f){
+						border:
+							WaterbodyMaterial
+						| inside:
+							t(0,0,-waterbodyHeight + waterbodyInnerHeight)
+							[t(0,0,waterdepth) Water]
+							extrude(world.up, waterbodyHeight - waterbodyInnerHeight)
+							comp(f){
+								top:
+									NIL
+								| all:
+									WaterbodyMaterial
+							}
+					}
+	}
+
+	
+WaterbodyMaterial -->
+	color("#cbc5a4")
+
+Water -->
+	color("#3f6f68")
+	set(material.opacity, 0.7)
+	set(material.specular.r,.5)
+	set(material.specular.g,.5)
+	set(material.specular.b,.6)
+	set(material.shininess,.3)
+	set(material.reflectivity,.7)
+	set(material.name, "Waterbody__water")
+
+############################################################
+# TREE ALLEY
+############################################################
+
+stripeThickness = 0.1
+
+@StartRule
+TreeAlley -->
+	split(u,unitSpace,0) { {~treeDist_length: NIL | stripeThickness: alignScopeToGeometry(yUp, 0, 0) TreeStripe }*}
+
+TreeStripe -->
+	split(v,unitSpace,0) { {~treeHeight_width: NIL | stripeThickness: TreeProb}* | ~treeHeight_width: NIL }
+
+TreeProb -->
+	case p(treeProb):
+		PutTree
+	else:
+		NIL
+
+############################################################
+# PUT TREE
+############################################################
+
+
+PutTree -->
+	report("Number of Trees", 1)
+	alignScopeToAxes(y)
+	s(treeWidth, treeHeight, treeWidth)
+	center(xz)
+	r(scopeCenter, 0, rand(360), 0)
+	primitiveCube()
+	color(.2,.8,.2)
+	Tree.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

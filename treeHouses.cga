@@ -1,0 +1,271 @@
+/**
+ * File:    treeHouses.cga
+ * Created: 24 Feb 2017 17:03:38 GMT
+ * Author:  Esri R&D Center Zurich
+ */
+
+version "2017.0"
+
+
+// ******************************
+// Attributes
+// ******************************
+
+@Handle(shape=PositionBridge, type=angular, slip=inside, translate={0, 0.5, 0}, skin=ring, occlusion=false, repeat=none)
+@Range(0, 360)
+attr bridge_angle = 0
+
+
+// ******************************
+// Variables and Functions
+// ******************************
+
+const ground_color = "#3b9632"
+
+const house_diameter = 6
+const house_eaveHeight = 4
+const house_color = "#b08564"
+const roof_angle = 30
+const roof_height = 0.5*house_diameter*tan(roof_angle) + roof_thickness
+const roof_thickness = 0.2
+const roof_overhang_x = 1
+const roof_overhang_y = roof_overhang_x * tan(roof_angle)
+const bottom_thickness = 0.2
+const bottom_width = 1.5
+
+const tree_height = 30
+const treeTrunk_diameter = 0.8
+const treeTrunk_color = "#b08564"
+const treeCrown_width = 12
+const treeCrown_height = 5
+const treeCrown_depth = 9
+const treeCrown_color = "#7abf74"
+
+const bridge_width = 0.8
+const bridge_height = 2
+const bridge_length = 0.5*(scope.sx - 3*house_diameter - 4*bottom_width)
+const bridge_thickness = bottom_thickness
+const bridgeCurve_radius = (0.25*bridge_length*bridge_length + bridge_height*bridge_height)/(2*bridge_height)
+
+const list_answers = "0;0;270;270;180;270;0;90;180;"
+
+getAnswer(row, col) = float(listItem(list_answers, row*3 + col))
+
+getBridgeAngle = 90*floor((bridge_angle + 45)/90)
+
+getConstrainedBridgeAngle(row, col) =
+	case row==0:
+		case col==0:
+			case bridge_angle<135 || bridge_angle>315:	0
+			else:										270
+		case col==2:
+			case bridge_angle>45 && bridge_angle<225:	180
+			else:										270
+		else:
+			case bridge_angle<90 || bridge_angle>315:	0
+			case bridge_angle>=90 && bridge_angle<225:	180
+			else:										270
+	case row==2:
+		case col==0:
+			case bridge_angle<45 || bridge_angle>225:	0
+			else:										90
+		case col==2:
+			case bridge_angle<135 || bridge_angle>315:	90
+			else:										180
+		else:
+			case bridge_angle<45 || bridge_angle>270:	0
+			case bridge_angle>=45 && bridge_angle<135:	90
+			else:										180
+	else:
+		case col==0:
+			case bridge_angle>45 && bridge_angle<180:	90
+			case bridge_angle>=180 && bridge_angle<315:	270
+			else:										0
+		case col==2:
+			case bridge_angle>=0 && bridge_angle<135:	90
+			case bridge_angle>=135 && bridge_angle<225:	180
+			else:										270
+		else:
+			case getBridgeAngle==360:					0
+			else:										getBridgeAngle
+
+
+// ******************************
+// Start Rule
+// ******************************
+
+Lot -->
+	PositionHouses
+	CreateOccluderTest
+	report("ProgressTotal", 1)
+
+	
+// ******************************
+// Position Houses
+// ******************************
+
+PositionHouses -->
+	split(x) { house_diameter: PositionRow(0)
+			 | ~1: 			   NIL
+			 | house_diameter: PositionRow(1)
+			 | ~1: 			   NIL
+			 | house_diameter: PositionRow(2) }
+
+PositionRow(col_ind) -->
+	split(z) { house_diameter: House(0, col_ind)
+			 | ~1: 			   NIL
+			 | house_diameter: House(1, col_ind)
+			 | ~1: 			   NIL
+			 | house_diameter: House(2, col_ind) }
+
+
+// ******************************
+// Tree House
+// ******************************
+
+House(row_ind, col_ind) -->
+	case row_ind==2 && col_ind==0:
+		NIL
+	else:
+		Tree
+		color(house_color)
+		t(0, tree_height, 0)
+		Bridge(row_ind, col_ind)
+		primitiveCylinder
+		s('1, house_eaveHeight, '1)
+		Cyl.
+		comp(f) { top=    Roof 
+				| bottom= reverseNormals() Bottom }
+		TestHouse(row_ind, col_ind)
+			
+House_NoBridge -->
+	Tree
+	color(house_color)
+	t(0, tree_height, 0)
+	primitiveCylinder
+	s('1, house_eaveHeight, '1)
+	Cyl.
+	comp(f) { top=    Roof 
+			| bottom= reverseNormals() Bottom }
+	
+Roof -->
+	s(scope.sx + 2*roof_overhang_x, scope.sy + 2*roof_overhang_x, 0)
+	center(xy)
+	t(0, 0, -roof_overhang_y)
+	roofPyramid(byAngle, roof_angle)
+	comp(f) { top= extrude(vertex.normal, roof_thickness) RoofFace. }
+
+Bottom -->
+	extrude(bottom_thickness)
+	s(scope.sx + 2*bottom_width, '1, scope.sz + 2*bottom_width)
+	center(xz)
+	
+	
+// ******************************
+// Tree
+// ******************************
+
+Tree -->
+	Crown
+	s(treeTrunk_diameter, tree_height, treeTrunk_diameter)
+	center(xz)
+	primitiveCylinder
+	color(treeTrunk_color)
+	Trunk.
+	
+Crown -->
+	s(treeCrown_width, treeCrown_height + rand(-2, 2), treeCrown_depth)
+	center(xz)
+	t(0, tree_height - scope.sy, 0)
+	primitiveCube
+	Lobe(0.5)
+	s('1, treeCrown_height + rand(-2, 2), '1)
+	t(0, -scope.sy - rand(0, 0.3), 0)
+	Lobe(3)
+	s('1, treeCrown_height + rand(-2, 2), '1)
+	t(0, -scope.sy - rand(0, 0.3), 0)
+	Lobe(3)
+	
+Lobe(m) -->
+	s(scope.sx + rand(-2, 2), '1, scope.sz + rand(-2, 2))
+	center(xz)
+	r(scopeCenter, 0, rand(0, 90), 0)
+	t(rand(-m, m), 0, rand(-m, m))
+	color(treeCrown_color)
+	split(x) { ~1: s('2, '1, '1)
+				   setPivot(yzx, 0)
+				   primitiveSphere
+				   split(y) { '0.5: CrownPart. }
+			 | ~3: setPivot(yzx, 0)
+			 	   primitiveCylinder
+			 	   CrownPart.
+			 | ~1: t('-1, 0, 0)
+			 	   s('2, '1, '1)
+				   setPivot(yzx, 0)
+			 	   primitiveSphere
+			 	   split(y) { ~1: NIL
+			 	   			| ~1: CrownPart. } }
+	
+	
+// ******************************
+// Bridge
+// ******************************
+
+Bridge(row_ind, col_ind) -->
+	t('0.5, 0, '0.5)
+	s(2, house_eaveHeight + roof_height, 2)
+	primitiveCube
+	r(0, getConstrainedBridgeAngle(row_ind, col_ind), 0)
+	PositionBridge
+	
+PositionBridge -->
+	t(0.5*house_diameter + bottom_width, 0, '-0.5)
+	ResizeBridge
+	
+ResizeBridge -->
+	t(0, -bridge_height, 0)
+	s(bridge_length, bridge_height, bridge_width)
+	center(z)
+	CurvedBridge
+
+CurvedBridge -->
+	s(2*bridgeCurve_radius, 2*bridgeCurve_radius, '1)
+	center(x)
+	rotateScope(90, 0, 0)
+	primitiveCylinder(256)
+	rotateScope(-90, 0, 0)
+	split(x) { ~1: 			  NIL
+			 | bridge_length: split(y) { bridge_height: comp(f) { bottom= reverseNormals
+			 															  extrude(vertex.normal, bridge_thickness)
+			 															  BridgePart. }
+			 						   | ~1: 			NIL }
+			 | ~1: 			  NIL }
+			  	
+			  	
+// ******************************
+// Check Answer
+// ******************************
+
+TestHouse(row_ind, col_ind) -->
+	case getConstrainedBridgeAngle(row_ind, col_ind) == getAnswer(row_ind, col_ind):
+		t(0, -house_eaveHeight-1, 0)
+		label("Check")
+		NIL
+	else:
+		label("Check")
+		NIL
+
+CreateOccluderTest -->
+	t(0, tree_height, 0)
+	extrude(house_eaveHeight)
+	TestCorrect
+	
+TestCorrect -->
+	case touches(intra, "Check"):
+		NIL
+	else:
+		report("Progress", 1)
+		report("Code.TreeHouses", 2)
+		NIL
+	
+	

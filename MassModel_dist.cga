@@ -1,0 +1,31 @@
+/**
+ * File:    MassModel.cga
+ * Created: 30 Sep 2010 17:20:37 GMT
+ * Author:  matt
+ */
+
+version "2014.1"
+
+attr LOD = 3
+
+
+
+
+import gen_Facade_AdvancedFacade : "gen_Facade_AdvancedFacade_dist.cga"
+attr buildingHeight = 25
+
+Lot-->
+	extrude(buildingHeight) comp(f) { side : gen_Facade_AdvancedFacade.Facade }
+
+
+
+
+
+
+
+
+
+
+
+	
+	 

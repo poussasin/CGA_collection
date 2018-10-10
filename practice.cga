@@ -1,0 +1,146 @@
+/**
+ * File:    practice.cga
+ * Created: 26 Sep 2018 12:45:20 GMT
+ * Author:  Jianwen Liu
+ */
+
+version "2018.0"
+
+	@Range(2,6)
+	attr groundfloor_height = 4
+	
+	@Range(2,6)
+	attr floor_height       = 3.5
+	
+	@Range(1,25)
+	attr height             = 18
+	attr tile_width         = 20
+
+	@StartRule
+	Lot-->
+		extrude(height) Building
+	
+	Building-->
+		comp(f){front: Frontfacade |
+		left: Sidefacade |
+		right: Sidefacade |
+		back: Frontfacade |
+		top: roof
+		}
+	
+	Frontfacade-->
+		split(y){groundfloor_height: Groundfloor |
+		{~floor_height: Floor}* |
+		floor_height: Topfloor
+		}
+		
+	Sidefacade-->
+		split(y){groundfloor_height: Sidefloor |
+		{0.25: Tile |
+		~floor_height: SideFloor}*
+		}
+		
+	Floor-->
+		split(x){1.5: Wall |
+		{~tile_width: Tile}* |
+		1.5: Wall
+		}
+	
+	Groundfloor-->
+		split(x){1: GroundWall |
+		{~tile_width: GroundTile}* |
+		1: GroundWall
+		}
+		
+	Sidefloor-->
+		split(x){1: GroundWall |
+		{~tile_width: GroundTileS}* |
+		1: GroundWall
+		}
+		
+	Topfloor-->
+		split(x){1: Wall |
+		{~tile_width: TileT}* |
+		1: Wall
+		}
+		
+	TileT-->
+		split(x){~4: ZhongT | ~0.5: Wall1 |
+		~4: Lianlang | ~0.5: Wall5 |
+		~4: Lianlang | ~0.5: Wall5 |
+		~4: Lianlang | ~0.5: Wall1
+		}
+		
+	Tile-->
+		split(x){~4: Zhong | ~0.5: Wall1 |
+		~4: Lianlang | ~0.5: Wall5 |
+		~4: Lianlang | ~0.5: Wall5 |
+		~4: Lianlang | ~0.5: Wall1
+		}
+		
+	attr wallColor          = "#FFF000"
+	const dirt_tex = "assets/dirt.jpg"
+	
+	ZhongT-->
+		color(wallColor)
+		s('1,'1.4,2)
+		set(material.dirtmap, dirt_tex)
+		i("builtin:cube:notex")
+		projectUV(0)
+		split(x){~0.2: Wall1 |
+		~2.6: split(y){~0.2: Wall |
+						~1: NeiBu |
+						~2.1: ShangBu |
+						~1.6: Wall1
+						} |
+			~0.2: Wall1
+			}
+			
+	Lianlang-->
+		split(y){~1: YangTai |
+		~2.3: WindowTile1 |
+		~0.2: Wall5
+		}
+		
+	WindowTile1-->
+		split(y){~0.4: Wall4 |
+		~1.8:Window |
+		~0.3: Wall3
+		}
+		
+	YangTai-->
+		extrude(2) alignScopeToAxes(y)
+		split(x){~0.2: GroundWall2 |
+		~2.6: split(y){~0.2: GroundWall2 |
+			~1: split(z){~0.01: Wall2 |
+				~1.8: NIL |
+				~0.2: GroundWall2} |
+			~0.2: GroundWall2
+			}
+		}
+	
+	const groundfloor_tex = "assets/facade_1F.jpg"
+	GroundWall-->
+		color(wallColor)
+		setupProjection(0,scope.xy,scope.sx,scope.sy)
+		texture(groundfloor_tex)
+		projectUV(0)
+		
+	/*Frontfacade-->
+		case name == "J6" || name == "J4" || name == "J11":
+			split(y){groundfloor_height: Groundfloor |
+			{~floor_height: UPFloor}*
+			}
+			
+		case name == "J2" || name == "J14" || name == "J5":
+			split(y){groundfloor_height: Groundfloor |
+			{0.25: GroundWall | ~floor_height: Floor}*
+			}
+		else:
+			split(y){groundfloor_height: Groundfloor |
+			{~floor_height: UPFloor}* |
+			0.25: GroundWall
+			}*/
+			
+	
+		

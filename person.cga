@@ -1,0 +1,138 @@
+/**
+ * File:    person.cga
+ * Created: 13 Mar 2017 17:16:18 GMT
+ * Author:  Esri R&D Center Zurich
+ */
+
+version "2017.0"
+
+
+@Hidden
+import Text:"/ESRI.lib/rules/General/Text.cga"
+
+
+// ******************************
+// Attributes
+// ******************************
+
+@Handle(shape=Handle_Action, type=selector, align=top, occlusion=false)
+@Range("No action", "Talk to person")
+attr action = "No action"
+
+@Hidden
+attr text1 = ""
+@Hidden
+attr text2 = ""
+
+
+// ******************************
+// Variables and Functions
+// ******************************
+
+const elevation = 0.05
+
+const text_size = 0.05
+const textBox_width = 1.2
+const textBox_height = 0.25
+
+const head_elevation = 1.59
+const head_height = 0.2
+const torso_elevation = 0.5
+const torso_width = 0.5
+const torso_height = 1.2
+const torso_cut = 0.1
+const arm_elevation = 0.3
+const arm_width = 0.06
+const arm_height = 0.5
+const leg_width = 0.2
+const leg_height = 0.6
+const leg_depth = 0.1
+const leg_spacing = 0.03
+const foot_height = 0.06
+
+
+// ******************************
+// Start Rule
+// ******************************
+
+Person -->
+	t(0, elevation, 0)
+	Mass
+	Head
+	Torso
+	Legs
+	DisplayText
+	
+	
+// ******************************
+// Rules
+// ******************************
+
+Mass -->
+	extrude(1.8)
+	Handle_Action
+	
+Handle_Action -->
+	NIL
+	
+Head -->
+	t(0, head_elevation, 0)
+	s(head_height, head_height, head_height)
+	center(xz)
+	primitiveSphere
+	
+Torso -->
+	t(0, torso_elevation, 0)
+	s(torso_width, torso_height, torso_width)
+	center(xz)
+	primitiveSphere
+	split(y) { torso_cut: NIL
+			 | ~1: 		  TorsoAndArms
+			 | torso_cut: NIL }
+	
+TorsoAndArms -->
+	MainTorso.
+	[ t(0, arm_elevation, 0)
+	  s(arm_width, arm_height, arm_width)
+	  center(z)
+	  setPivot(xyz, 5)
+	  r(0, 0, -10)
+	  Arm. ]
+	[ t(scope.sx + 0.03, arm_elevation, 0)
+	  s(arm_width, arm_height, arm_width)
+	  center(z)
+	  r(0, 0, 10)
+	  Arm. ]
+	
+Legs -->
+	s(leg_width, leg_height, leg_depth)
+	center(xz)
+	primitiveCube
+	split(x) { ~1: 			Leg
+			 | leg_spacing: NIL
+			 | ~1: 			Leg }
+	
+Leg -->
+	split(y) { foot_height: Foot
+			 | ~1: 			primitiveCylinder LegPart. }
+			 
+Foot -->
+	s('1.3, '1.8, '2.3)
+	center(x)
+	primitiveSphere
+	
+DisplayText -->
+	case action=="Talk to person":
+		t(0, head_elevation + head_height + 0.04 + textBox_height, '0.5)
+		s(textBox_width, 0, textBox_height)
+		center(x)
+		r(90, 0, 0)
+		split(z) { ~1: PrintText(text1)
+				 | ~1: PrintText(text2) }
+	else:
+		NIL
+	
+PrintText(textStr) -->
+	set(Text.Text, textStr)
+	set(Text.Size, text_size)
+	Text.Generate

@@ -1,0 +1,1576 @@
+/**
+ * File:    sternwarte.cga
+ * Created: 26 May 2015 11:46:03 GMT
+ * Author:  Esri R&D Center Zurich
+ */
+
+version "2016.0"
+
+
+// ------------------------------
+// Attributes and Variables
+// ------------------------------
+
+
+@Group("Main", 1)
+
+@Order(1)
+@Handle(shape=Main, axis=x, skin=diameterArrow)
+@Range(6.4, 100)			// 6.4 < main_width (for one facade tile)
+@Description("width of main rectangular part")
+attr main_width				= 6.8
+
+@Order(2)
+@Handle(shape=Main, axis=z, skin=diameterArrow)
+@Range(6.4, 100)			// 6.4 < main_depth (for one facade tile)
+@Description("depth of main rectangular part")
+attr main_depth				= 18
+
+@Order(3)
+@Handle(shape=Tower, slip=screen, reference=center, extensionLines=fade)	
+@Range(11.2, 100)			// 11.2 < tower_height, (for ground floor, top floor, dome base)
+@Description("height of cylindrical part of tower, without dome")
+attr tower_height			= 15.2
+
+@Order(4)
+//@Handle(shape=Terrace, axis=z-)
+@Range(3.3, 20)				// 3.3 < terrace_depth, (for tower door to line up with stairs)
+@Description("depth of terrace")
+attr terrace_depth			= 8.9
+
+// ------
+
+@Group("Left Wing", 2)
+
+@Order(1)
+@Handle(shape=LeftWing, axis=x-)
+@Range(3.6, 100)			// 3.6 < leftWing_width, (for pillars and margins)
+@Description("width of left wing")
+attr leftWing_width 		= 6.4
+
+@Handle(shape=LeftWing, axis=z-)
+@Order(2)
+@Range(6.4, 100)			// 6.4 < leftWing_depth, (for one facade tile)
+@Description("depth of left wing")
+attr leftWing_depth 		= max(main_depth - 0.4, 6.4)		// 17.6
+
+@Order(3)
+@Handle(shape=LeftWingTranslateXHandle, axis=x, reference=center, slip=inside, occlusion=false, skin=Sphere, color="#e9e926")
+@Description("left wing x position")
+attr leftWing_pos_x			= main_offset_x		// front right corner
+
+@Order(4)
+@Handle(shape=LeftWingTranslateZHandle, axis=z, reference=center, slip=inside, occlusion=false, skin=Sphere, color="#e9e926")
+@Description("left wing z position")
+attr leftWing_pos_z			= main_offset_z + main_depth - tileWithMargin_width + pillar_width  // front right corner, LeftWing stays with front of Main, windows in LeftWing and Main align
+
+// ------
+
+@Group("Right Wing", 3)
+
+@Order(1)
+@Handle(shape=RightWing, axis=x)
+@Range(5, 100)				// 5 < rightWing_width, (for one right wing facade tile)
+@Description("width of right wing")
+attr rightWing_width		= 17.2
+
+@Order(2)
+@Handle(shape=RightWing, axis=z-)
+@Range(6.4, 100)			// 6.4 < rightWing_depth, (for one yellow facade tile)
+@Description("depth of right wing")
+attr rightWing_depth		= 6.6
+
+@Order(3)
+@Handle(shape=RightWingTranslateXHandle, axis=x, reference=center, slip=inside, occlusion=false, skin=Sphere, color="#e9e926")
+@Description("right wing x position")
+attr rightWing_pos_x		= main_offset_x + main_width		// front left corner
+
+@Order(4)
+@Handle(shape=RightWingTranslateYHandle, axis=y, reference=center, slip=inside, occlusion=false, skin=Sphere, color="#e9e926")
+@Description("right wing y position")
+attr rightWing_pos_y		= 0	
+
+@Order(5)
+@Handle(shape=RightWingTranslateZHandle, axis=z, reference=center, slip=inside, occlusion=false, skin=Sphere, color="#e9e926")
+@Description("right wing z position")
+attr rightWing_pos_z 		= main_offset_z + main_depth	// front left corner
+
+@Order(6)
+@Handle(type=angular, Shape=RightWing, axis=y, translate={0, 0.5, 0}, occlusion=false, color="#e9e926")
+@Range(-180, 180)
+@Description("right wing rotation angle (deg)")
+attr rAngle 				= 0
+
+// ------
+
+@Group("Facade", 4)
+
+@Order(2)
+@Range(0.6, 2.2)			// 0.6 < window_width < 2.2, (to fit all vertical railing pieces, to fit window height in tile)
+@Description("window width")
+attr window_width			= 1.7
+
+@Order(3)
+@Range(0.6, 3.5)			// window_height < 3.5, (to fit in tile)
+@Description("window height")
+attr window_height 			= window_width*1.529		// 2.6
+
+@Order(4)
+@Range(0.6, 2.4)			// groundWindow_width < 2.4, (to fit window height in tile)
+@Description("ground floor window width")
+attr groundWindow_width		= window_width				// window on ground floor
+
+@Order(5)
+@Range(0.6, 3.8)			// groundWindow_height < 3.8, (to fit in tile)
+@Description("ground floor window height")
+attr groundWindow_height	= groundWindow_width*1.529
+
+@Order(6)
+@Range(0.3, 1.2)			// topWindow_width < 1.2, (to fit window height in tile)
+@Description("width of single window on top floor")
+attr topWindow_width		= window_width*0.647 		// 1.1, single window on top floor
+
+@Order(7)
+@Range(0.6, 2.5)			// topWindow_height < 2.5, (to fit in tile)
+@Description("height of single window on top floor")
+attr topWindow_height		= topWindow_width*1.636		// 1.8
+
+@Order(8)
+@Range(1, 6.5)				// 1 < door_width < 6.5, (for skinny door, for min facade width)
+@Description("door width")
+attr door_width				= 2.6
+
+@Order(9)
+@Range(2, 5)				// 2 < door_height < 5, (standard door height, for ground floor height)
+@Description("door height")
+attr door_height			= 4.4
+
+@Order(10)
+@Range(5.4, 6.9)			// 5.4 < groundFloor_height < 6.9 (for door height, to keep mid floor windows)
+@Description("ground floor height")
+attr groundFloor_height		= 6
+
+@Order(110)
+@Range(4, 8)				// 4 < floor_height, (fewer cases without windows when tower_height is increased)
+@Description("height of middle floors")
+attr floor_height 			= 4							// height of middle floors
+
+@Order(12)
+@Range(2.3, 7)				// 2.3 < topFloor_height < 7, (keep window in tile, ground floor and top floor takes up main_height)
+@Description("top floor height")
+attr topFloor_height		= 3
+
+@Order(13)
+@Range(0.2, 0.7)			// 0.2 < pillar_width > 0.7, (so right wing doesn't occlude window, for cylinder face)
+@Description("width of pillar decorations flanking windows")
+attr pillar_width			= 0.4						// width of pillars on facades
+
+@Order(14)
+@Range(0.4, 1.1)
+@Description("height of railings on roofs")
+attr roofRailing_height		= 0.7
+
+// ------
+
+@Group("Materials", 5)
+
+@Order(0)
+@Range("CE Blue","CE Dark Blue","CE Green","CE Brown","CE Black","iRay Glass")
+attr glass_material = "CE Black"
+
+@Order(1)
+@Color
+@Description("wall color of upper floors")
+attr wall_color		= "#EED6A2"					// yellow wall of upper floors
+
+@Order(2)
+@Color
+@Description("brick color of upper part of ground floor")
+attr brick_color			= "#929280"					// brick color of upper part of ground floor (lighter gray)
+
+@Order(3)
+@Color
+@Description("brick color of lower part of ground floor")
+attr lowerBrick_color		= "#7C807E"					// brick color of lower part of ground floor (darker gray)
+
+@Order(4)
+@Color
+@Description("white column in right wing facade")
+attr column_color		= "#DADBD0"					// white column in right wing facade
+
+@Order(5)
+@Color
+@Description("roof color")
+attr roof_color				= "#555056"					// roof color
+
+@Order(6)
+@Color
+@Description("dome color")
+attr dome_color				= "#393D39"					// dome color
+
+
+// positioning of parts: main, terrace, left wing, right wing
+const bound_x						= 70									// bounds for building part translation (by handles)
+const bound_z						= 70
+const building_width				= 6.4 + main_width + 17.2				// building size, center building over Lot but only Main changes centering
+const building_depth				= 13.4 + main_depth
+const main_offset_x					= bound_x/2 - building_width/2 + 6.4	// center building and place Main correctly relative to centered building
+const main_offset_z					= bound_z/2 - building_depth/2 + 13.4
+const terrace_offset_x				= main_offset_x							// back left corner, translation offset for terrace
+const terrace_offset_z				= main_offset_z - towerSection_depth - terrace_depth
+const leftWing_offset_x				= leftWing_pos_x - leftWing_width		// back left corner, translation offset for left wing
+const leftWing_offset_z				= leftWing_pos_z - leftWing_depth
+const rightWing_offset_x			= rightWing_pos_x						// back left corner, translation offset for right wing
+const rightWing_offset_y			= rightWing_pos_y
+const rightWing_offset_z			= rightWing_pos_z - rightWing_depth
+
+// positioning of tower
+const towerOverlapWithTerrace		= 1.3						// should be > 0.2, overlap values and initial depths cause main+tower+terrace depth = 31.4
+const towerOverlapWithMain			= 1							// should be > 0.2
+const towerOverlapWithLeftWing		= 0.1						// this overlap extends scope in x and z to keep cylinder circular, increases dome height to keep dome spherical
+const towerSection_depth			= main_width - towerOverlapWithTerrace - towerOverlapWithMain	// depth of non-overlapping region for tower
+const tower_offset_x				= main_offset_x - towerOverlapWithLeftWing	// back left corner, translation offset for tower
+const tower_offset_z				= main_offset_z - towerSection_depth - towerOverlapWithTerrace - towerOverlapWithLeftWing
+
+// heights calculated from other attributes
+const main_height					= tower_height - domeBase_height	// 13, not including railing
+const leftWing_height				= main_height - topFloor_height		// 10, not including roof
+const rightWing_height				= groundFloor_height				// 6, not including railing
+
+// terrace dimensions
+const terrace_width					= main_width
+const terrace_height				= 2.2
+const terraceStairs_width			= 1.8
+
+// handle box dimensions
+const handle_width					= 0.1					// width of bounding boxes for handles
+const handle_length					= 5						// length of bounding boxes for handles
+
+// floor heights
+const lowerGround_height			= groundFloor_height*0.2	// 1.2, lower part of ground floor (darker bricks)
+const upperGround_height			= groundFloor_height - base_height - lowerGround_height	// upper part of ground floor (lighter bricks)
+const dome_height 					= main_width/2 + towerOverlapWithLeftWing	// 3.5, keep spherical when tower diameter increases
+const domeBase_height				= 2.2
+
+// facade element sizes
+const base_height					= 0.7						// base around bottom of entire building
+const base_depth					= 0.1
+const pillar_depth					= 0.1
+const wallMargin_width				= min(max(window_width*0.706, pillar_width), 1.2)		// 1.2, yellow wall margin
+const tile_width 					= window_width*1.412		// 2.4, facade tile
+const tileWithMargin_width 			= pillar_width*4 + wallMargin_width*2 + tile_width	// 6.4, single window facade unit: pillar, margin, pillar, tile (wall, window, wall), pillar, margin, pillar
+const window_depth					= 0.3
+const maxWindow_width 				= max(2*topWindow_width, max(window_width, groundWindow_width))		// largest window width
+const door_depth					= 1.8
+
+// ledge sizes
+const lowerLedge_height				= 0.2
+const lowerLedge_depth				= 0.1
+const midLedge_height				= 0.3
+const midLedge_depth				= 0.2
+const topLedge_height				= 0.5
+const topLedge_depth				= 0.3
+
+// stairs
+const step_width					= 0.34
+const step_height					= 0.14
+
+// right wing facade element sizes
+const rightWingTile_width			= groundWindow_width*1.588	// 2.7, right wing facade tile
+const whiteColumn_width				= pillar_width*1.425		// 0.57, white column between tiles on right wing
+const rightWingMargin_width			= min(max(groundWindow_width*0.882, pillar_width), 1.5)	// 1.5, margin on left side of right wing
+const rightWingDecoSpacing			= 1.15						// spacing between ledge decorations on side of right wing on top ledge
+
+// tower elements
+const towerGroundDoor_width			= 1.0						// don't make this an attribute because pillar pattern on cylinder depends on it
+const towerGroundDoor_height		= 2
+const towerRoofDoor_width			= towerGroundDoor_width
+const towerRoofDoor_height			= towerGroundDoor_height
+const towerWindow_width				= 1.3						// don't make this an attribute because pillar pattern on cylinder depends on it
+const towerWindow_height			= towerWindow_width*1.7
+const towerWindowSpacing			= groundFloor_height - 0.5*towerWindow_height - towerGroundDoor_height - terrace_height
+const showSplitWindow				= case tower_height > groundFloor_height + 0.5*towerWindow_height + towerWindowSpacing + domeBase_height : true		// check if there's enough room to show split window
+							  		  else : false
+
+// roof elements
+const roofRailingHBar_height		= 0.1
+const roofRailingHBar_depth			= roofRailingVBar_width + 0.2
+const roofRailingVBar_width			= pillar_width
+const mainRoofRailingSpacing		= 0.5*(wallMargin_width - pillar_width)
+const leftWingRoofAngle				= 20						// initial angle of left wing roof, changes when left wing is resized in order to keep height constant
+const leftWingRoof_height			= 2.3						// height of left wing roof
+const rightWingRoofRailingSpacing	= 0.5*(rightWingTile_width + pillar_width)
+
+// terrace element sizes
+const terraceStep_width				= 0.28
+const terraceStep_height			= 0.16
+const terraceRailing_height			= roofRailing_height
+const terraceRailingHBar_height		= roofRailingHBar_height
+const terraceRailingHBar_depth		= roofRailingHBar_depth
+
+// brick texture
+const brickTex_width				= 3.25
+const brickTex_height				= 1.75
+const nBricks_y						= 5								// 5 bricks in y dir in brick texture
+const brick_height					= brickTex_height/nBricks_y
+
+// small float epsilon
+const eps							= 0.000001
+
+// colors
+const pillar_color					= brick_color
+const ledge_color					= brick_color
+const base_color					= lowerBrick_color
+const stairs_color					= lowerBrick_color
+const railingHBar_color				= brick_color
+const railingVBar_color				= brick_color
+const terrace_color					= brick_color
+const terraceStairs_color			= lowerBrick_color
+
+
+// ------------------------------
+// Assets
+// ------------------------------
+
+// assets
+cylinder_asset 				= "cylinder.obj"
+dome_asset					= "hemisphere.obj"
+windowFrame_asset			= "window_frame.obj"
+windowGlass_asset			= "window_glass.obj"
+windowWall_asset			= "window_wall.obj"
+midPillar_asset				= "pillar_middle.obj"
+topPillar_asset				= "pillar_top.obj"
+base_asset					= "base.obj"
+doorFrame_asset				= "door_frame.obj"
+doorWall_asset				= "door_wall.obj"
+doorPlane_asset				= "door_plane.obj"
+lowerLedge_asset			= "lowerLedge.obj"
+midLedge_asset				= "midLedge.obj"
+topLedge_asset				= "topLedge.obj"
+ledgeDecoration_asset 		= "ledgeDecoration.obj"
+roofRailingHBar_asset		= "railing_top.obj"
+roofRailingVBar_asset		= "railing_base.obj"
+squareBrick_asset			= "squareBrick.obj"
+
+// textures
+brickWall_tex				= "brickWall.jpg"
+door_tex					= "door.jpg"
+
+
+// ------------------------------
+// Functions
+// ------------------------------
+
+// max of a and b
+max(a, b) =
+	case a >= b :
+		a
+	else :
+		b
+		
+// min of a and b
+min(a, b) =
+	case a <= b :
+		a
+	else :
+		b
+
+
+// ------------------------------
+// Start Rule
+// ------------------------------
+
+// start rule
+// non-rectangular lot needs to have appropriate first edge so that front of building has edge 0 after innerRect() call
+@StartRule
+Lot -->
+	innerRect()					// make lot rectangular
+	s(bound_x, 0, bound_z)
+	center(xz)
+	MainLot
+	TerraceLot
+	TowerLot
+	LeftWingLot
+	RightWingLot
+	
+
+// ------------------------------
+// Volumes
+// ------------------------------
+
+// set size and position of Main
+MainLot -->
+	s(main_width, 0, main_depth)
+	t(main_offset_x, 0, main_offset_z)
+	extrude(main_height)
+	Main
+	
+// main rectangular part of building
+Main -->
+	comp(f) { front	: MainFrontFacade
+			| left 	: MainLeftFacade
+			| right : MainRightFacade
+			| back 	: MainBackFacade
+			| top 	: MainRoof }
+			
+// set size and position of terrace
+TerraceLot -->
+	s(terrace_width, 0, terrace_depth)
+	t(terrace_offset_x, 0, terrace_offset_z)
+	extrude(terrace_height)
+	Terrace
+	
+// terrace next to tower
+Terrace -->
+	split(z) { terraceStairs_width 	: TerraceStairsArea
+			 | ~1 					: TerraceArea }
+	
+// set size and position of scope for tower, insert cylinder
+TowerLot -->
+	s(main_width + 2*towerOverlapWithLeftWing, 0, main_width + 2*towerOverlapWithLeftWing)	// diameter = main_width + 2*towerOverlapWithLeftWing
+	t(tower_offset_x, 0, tower_offset_z)
+	extrude(tower_height + dome_height)
+	split(y) { tower_height : i(cylinder_asset) Tower
+			 | dome_height  : Dome }
+				
+// set size and position of left wing
+LeftWingLot -->
+	s(leftWing_width, 0, leftWing_depth)
+	t(leftWing_offset_x , 0, leftWing_offset_z)
+	extrude(leftWing_height)
+	LeftWing
+	LeftWingTranslationHandles
+	
+// left wing
+LeftWing -->
+	comp(f) { front : LeftWingFacade
+			| side 	: LeftWingFacade
+			| top 	: LeftWingRoof }
+
+// set size and position of right wing
+RightWingLot -->
+	s(rightWing_width, 0, rightWing_depth)
+	t(rightWing_offset_x, rightWing_offset_y, rightWing_offset_z)
+	r(0, rAngle, 0)
+	extrude(rightWing_height)
+	RightWing
+	RightWingTranslateHandles
+	
+// right wing
+RightWing -->
+	comp(f) { front : RightWingFacade("front")
+			| left 	: RightWingSideFacade
+			| right : RightWingSideFacade
+			| back 	: RightWingFacade("back")
+			| top 	: RightWingRoof }
+
+
+// ------------------------------
+// Handles
+// ------------------------------
+
+// LeftWing translation handles should appear centered on top of obj
+LeftWingTranslationHandles -->
+	t('0.5, '1.2, '0.5)											// move to center of scope
+	[ s(handle_width, handle_width, handle_length)				// set scope to handle size
+	  t('-0.5, 0, '-0.5)										// center handle over obj
+	  LeftWingTranslateZHandle ]
+	[ s(handle_length, handle_width, handle_width)
+	  t('-0.5, 0, '-0.5)
+	  LeftWingTranslateXHandle ]
+
+LeftWingTranslateZHandle -->
+	NIL
+	
+LeftWingTranslateXHandle -->
+	NIL
+
+// RightWing translation handles should appear centered on top of obj
+RightWingTranslateHandles -->
+	t('0.5, '1, '0.5)											// move to center of scope
+	[ s(handle_width, handle_width, handle_length)				// set scope to handle size
+	  r(0, -rAngle, 0)											// rotate to align to coord frame of main
+	  t('-0.5, 0, '-0.5)										// center handle over obj
+	  RightWingTranslateZHandle ]
+	[ s(handle_length, handle_width, handle_width)
+	  r(0, -rAngle, 0)
+	  t('-0.5, 0, '-0.5)
+	  RightWingTranslateXHandle ]
+	[ s(handle_width, handle_length, handle_width)
+	  r(0, -rAngle, 0)
+	  t('-0.5, '-0.5, '-0.5)
+	  RightWingTranslateYHandle ]
+
+RightWingTranslateZHandle -->
+	NIL
+	
+RightWingTranslateXHandle -->
+	NIL
+
+RightWingTranslateYHandle -->
+	NIL
+	
+	
+// ------------------------------
+// Facades: Main, LeftWing
+// ------------------------------
+
+// main building, front facade with door
+MainFrontFacade -->
+	split(y) { groundFloor_height 	: GroundFloorDoor
+			 | {~floor_height 		: Floor("midFloor", 1, 1, 1)}*
+			 | topFloor_height 		: Floor("topFloor", 1, 1, 1) }
+	
+	
+// main building, left side facade
+MainLeftFacade -->
+	split(x) { ~1 					: split(y) { groundFloor_height	: GroundFloor(1, 0)
+			 				 				   | {~floor_height		: Floor("midFloor", 1, 1, 0)}*
+			 								   | topFloor_height	: Floor("topFloor", 1, 1, 0)}
+			 | tileWithMargin_width : split(y) { groundFloor_height : GroundFloor(1, 1)
+			 				 			 	   | {~floor_height 	: Floor("midFloor", 1, 1, 1)}*
+			 				 			 	   | topFloor_height 	: Floor("topFloor", 1, 1, 1)}
+			 }
+
+// main building, right side facade
+MainRightFacade -->
+	split(x) { tileWithMargin_width : split(y) { groundFloor_height : GroundFloor(1, 1)
+			 				 			 	   | {~floor_height 	: Floor("midFloor", 1, 1, 1)}*
+			 				 			 	   | topFloor_height 	: Floor("topFloor", 1, 1, 1)}
+			 | ~1 					: split(y) { groundFloor_height : GroundFloor(0, 1)
+			 				 				   | {~floor_height 	: Floor("midFloor", 0, 0, 1)}*
+			 				 				   | topFloor_height 	: Floor("topFloor", 0, 0, 1)}
+			 }
+
+// main building, back facade mostly covered by tower
+MainBackFacade -->
+	split(y) { groundFloor_height 	: MainBackGroundFloor
+			 | { ~floor_height 		: MainBackUpper }*
+			 | topFloor_height 		: MainBackUpper }
+	
+// left wing facade
+LeftWingFacade -->
+	split(y) { groundFloor_height 	: GroundFloor(1, 1)
+			 | {~floor_height 		: Floor("midFloor", 1, 1, 1)}* }
+	
+
+// ------------------------------
+// Floors: Main, LeftWing
+// ------------------------------
+
+
+// ground floor of Main and LeftWing, with windows
+// withLeftPillar 		[0,1] include left pillar
+// withRightPillar 		[0,1] include right pillar
+GroundFloor(withLeftPillar, withRightPillar) -->
+	split(y) { base_height 								: Base
+			 | lowerGround_height - lowerLedge_height	: setupProjection(0, scope.xy, brickTex_width, brickTex_height) LowerBrickWall
+			 | lowerLedge_height 						: LowerLedge
+			 | upperGround_height - midLedge_height 	: GroundFloorPanel(withLeftPillar, withRightPillar)
+			 | midLedge_height 							: MidLedge }
+			 
+// upper panel of ground floor, panel containing light bricks and windows
+// withLeftPillar 		[0,1] include left pillar
+// withRightPillar 		[0,1] include right pillar
+GroundFloorPanel(withLeftPillar, withRightPillar) -->
+	setupProjection(0, scope.xy, brickTex_width, brickTex_height)
+	split(x) { withLeftPillar*pillar_width 	: BrickWall
+			 | wallMargin_width 			: BrickWall
+			 | ~1 							: GroundFloorRepeatingPatternSection
+			 | pillar_width 				: BrickWall
+			 | wallMargin_width 			: BrickWall
+			 | withRightPillar*pillar_width : BrickWall }
+			 
+// number of repeating patterns and actual tile width
+// calculate actual tile width so that tiles are big enough to contain windows
+numRepeats = floor(scope.sx/(pillar_width + maxWindow_width))
+actualTile_width = case numRepeats == 0 : maxWindow_width
+				   else : scope.sx/numRepeats - pillar_width
+
+// repeating pattern on ground floor of Main and LeftWing: pillar, tile (tile: wall, window, wall)
+GroundFloorRepeatingPatternSection -->
+	case scope.sx >= pillar_width :
+		split(x) { pillar_width			: BrickWall
+			 	 | ~actualTile_width	: Tile("groundFloor") }*
+	else :
+		BrickWall
+
+// ground floor of Main with door
+GroundFloorDoor -->
+	split(y) { base_height 								: Base
+			 | lowerGround_height - lowerLedge_height	: LowerDoorPanel(false)
+			 | lowerLedge_height						: LowerLedgePanel(false)
+			 | upperGround_height - midLedge_height		: UpperDoorPanel(false)
+			 | midLedge_height							: MidLedge }
+			 	
+// mid and top floors
+// floorType			["midFloor", "topFloor"]
+// withLeftPillar 		[0,1] include left pillar
+// showMiddlePillars 	[0,1] 1: show pillar, 0: show wall
+// withRightPillar 		[0,1] include right pillar
+Floor(floorType, withLeftPillar, showMiddlePillars, withRightPillar) -->
+	case split.index == split.total - 1 :		// top floor
+		split(y) { ~1 				: FloorPanel(floorType, withLeftPillar, showMiddlePillars, withRightPillar, 1)
+			 	 | topLedge_height 	: TopLedge }
+	else :										// middle floor
+		split(y) { ~1 				: FloorPanel(floorType, withLeftPillar, showMiddlePillars, withRightPillar, 0)
+			 	 | midLedge_height 	: MidLedge }
+
+// pattern for each floor/subfloor (except GroundFloor): margin, repeating tiles, margin
+// floorType			["midFloor", "topFloor"]
+// withLeftPillar 		[0,1] include left pillar
+// showMiddlePillars 	[0,1] 1: show pillar, 0: show wall
+// withRightPillar 		[0,1] include right pillar
+// showLedgeDecoration	[0,1] show ledge decoration on top of pillar on top floor
+FloorPanel(floorType, withLeftPillar, showMiddlePillars, withRightPillar, showLedgeDecoration) -->
+	split(x) { withLeftPillar*pillar_width  : Pillar(floorType, 1, showLedgeDecoration)
+			 | wallMargin_width             : YellowWall
+			 | ~1							: RepeatingPatternSection(floorType, showMiddlePillars, showLedgeDecoration)
+			 | pillar_width                 : Pillar(floorType, showMiddlePillars, showLedgeDecoration)
+			 | wallMargin_width             : YellowWall
+			 | withRightPillar*pillar_width : Pillar(floorType, 1, showLedgeDecoration) }
+			 
+// repeating pattern on each floor/subfloor: pillar, tile (tile: wall, window, wall)
+// floorType			["midFloor", "topFloor"]
+// showMiddlePillars 	[0,1] 1: show pillar, 0: show wall
+// showLedgeDecoration	[0,1] show ledge decoration on top of pillar on top floor			 
+RepeatingPatternSection(floorType, showMiddlePillars, showLedgeDecoration) -->
+	case scope.sx >= pillar_width :
+		split(x) { pillar_width			: Pillar(floorType, showMiddlePillars, showLedgeDecoration)
+			 	 | ~actualTile_width	: Tile(floorType) }*
+	else :
+		YellowWall
+
+// back of main part, ground floor
+MainBackGroundFloor -->
+	split(y) { base_height 								: Base
+			 | lowerGround_height - lowerLedge_height 	: setupProjection(0, scope.xy, brickTex_width, brickTex_height) LowerBrickWall
+			 | lowerLedge_height 						: LowerLedge
+			 | upperGround_height - midLedge_height 	: setupProjection(0, scope.xy, brickTex_width, brickTex_height) BrickWall
+			 | midLedge_height 							: MidLedge }
+			 
+// back of main part, upper floors
+MainBackUpper -->
+	case split.index == split.total - 1 :		// top floor
+		split(y) { ~1 				: YellowWall
+				 | topLedge_height 	: TopLedge }
+	else :										// middle floor
+		split(y) { ~1 				: YellowWall
+				 | midLedge_height 	: MidLedge }
+				 
+				 
+// ------------------------------
+// Door Panels for Main and RightWing
+// ------------------------------
+
+// facade with door, lower/darker brick wall
+// hideDoor		[true, false] true: do not show door, show bricks
+LowerDoorPanel(hideDoor) -->
+	case hideDoor :
+		setupProjection(0, scope.xy, brickTex_width, brickTex_height)
+		LowerBrickWall
+	else :
+		setupProjection(0, scope.xy, brickTex_width, brickTex_height)
+		split(x) { ~1 			: LowerBrickWall
+				 | door_width 	: DoorPart("lowerBrick")
+				 | ~1 			: LowerBrickWall }
+	
+// facade with door, ledge that splits door
+// hideDoor		[true, false] true: do not show door, show ledge
+LowerLedgePanel(hideDoor) -->
+	case hideDoor :
+		LowerLedge
+	else :
+		split(x) { ~1 			: LowerLedge("left")
+				 | door_width 	: DoorPart("lowerLedge")
+				 | ~1 			: LowerLedge("right") }
+	
+// facade with door, upper/lighter brick wall
+// hideDoor		[true, false] true: do not show door, show bricks
+UpperDoorPanel(hideDoor) -->
+	case hideDoor :
+		setupProjection(0, scope.xy, brickTex_width, brickTex_height)
+		BrickWall
+	else :
+		setupProjection(0, scope.xy, brickTex_width, brickTex_height)
+		split(x) { ~1 			: BrickWall
+				 | door_width 	: DoorPart("upperBrick")
+				 | ~1 			: BrickWall }
+
+// grow shape to door size, test if door intersects other geometry
+// fromType		["lowerBrick", "lowerLedge", "upperBrick"] set door size starting from this shape
+DoorPart(fromType) -->
+	case fromType == "lowerBrick" :
+		set(trim.vertical, false)		// disable vertical trimming so scope is not cut off
+		t(0, 0, -door_depth)
+		s('1, door_height, door_depth)
+		primitiveCube()
+		DoorTest(fromType)
+	case fromType == "lowerLedge" :
+		set(trim.vertical, false)
+		t(0, -lowerGround_height + lowerLedge_height, -door_depth)
+		s('1, door_height, door_depth)
+		primitiveCube()
+		DoorTest(fromType)
+	else :
+		set(trim.vertical, false)
+		t(0, -lowerGround_height, -door_depth)
+		s('1, door_height, door_depth)
+		primitiveCube()
+		DoorTest(fromType)
+				
+// insert door if doesn't intersect other geometry, otherwise insert wall
+// fromType		["lowerBrick", "lowerLedge", "upperBrick"] reset size from door shape to this shape
+DoorTest(fromType) -->
+	case touches(intra) :
+		case fromType == "lowerBrick" :
+			t(0, 0, door_depth)
+			s('1, lowerGround_height - lowerLedge_height, 0)
+			LowerBrickWall
+		case fromType == "lowerLedge" :
+			set(trim.vertical, true)
+			t(0, lowerGround_height - lowerLedge_height, door_depth)
+			s('1, lowerLedge_height, 0)
+			LowerLedge
+		else :
+			t(0, lowerGround_height, door_depth)
+			s('1, upperGround_height - midLedge_height, 0)
+			BrickWall
+	else :
+		case fromType == "lowerBrick" :
+			NIL
+		case fromType == "lowerLedge" :
+			NIL
+		else :
+			t(0, 0, door_depth)
+			s('1, lowerGround_height + upperGround_height - midLedge_height, 0)
+			split(y) { door_height 	: Door
+									  Stairs
+					 | ~1 			: BrickWall }
+
+// stairs leading up to doors
+Stairs -->
+	s(door_width, base_height, '1)
+	t(0, -base_height, 0)
+	center(x)
+	setPivot(xyz, 5)
+	split(y) { ~step_height : Step }*
+	
+// single step in staircase leading up to doors
+Step -->
+	s(scope.sx + 2*step_width*(split.index + 1), '1, step_width*(split.index + 1) )
+	center(x)
+	primitiveCube()
+	color(stairs_color)
+
+
+// ------------------------------
+// Tiles for Main and LeftWing
+// ------------------------------
+	
+// tile for each floor: wall, window, wall
+// floorType			["groundFloor", "midFloor", "topFloor"]
+Tile(floorType) -->
+	case touches(intra) :
+		case floorType == "groundFloor" :
+			BrickWall
+		else :
+			YellowWall
+	else :
+		case floorType == "groundFloor" :
+			split(x) { ~1 					: BrickWall
+					 | groundWindow_width 	: split(y) { groundWindow_height 	: Window("brickWall")
+					 								   | ~1 					: BrickWall }
+					 | ~1 					: BrickWall }
+		case floorType == "midFloor" :
+			split(x) { ~1 					: YellowWall
+					 | window_width 		: split(y) { window_height 	: Window("yellowWall")
+					 								   | ~1 			: YellowWall }
+				 	 | ~1 					: YellowWall }
+		case floorType == "topFloor" :
+			split(x) { ~1 					: YellowWall
+					 | topWindow_width 		: split(y) { topWindow_height 	: Window("yellowWall")
+					 								   | ~1 				: YellowWall }
+					 | topWindow_width 		: split(y) { topWindow_height 	: Window("yellowWall")
+					 								   | ~1 				: YellowWall }
+				 	 | ~1 					: YellowWall }
+		else :
+			case floorType == "groundFloor" :
+				BrickWall
+			else :
+				YellowWall
+			 	 
+
+// ------------------------------
+// Right Wing Facade/Floors
+// ------------------------------
+
+// right wing facade with windows
+// similar to GroundFloor
+// faceType 	["front", "back"]
+RightWingFacade(faceType) -->
+	split(y) { base_height 								: Base
+			 | lowerGround_height - lowerLedge_height 	: setupProjection(0, scope.xy, brickTex_width, brickTex_height) LowerBrickWall
+			 | lowerLedge_height 						: LowerLedge
+			 | upperGround_height - midLedge_height 	: RightWingPanel(faceType)
+			 | midLedge_height 							: TopLedge }
+	
+// right wing, panel with windows and lighter color bricks		
+// faceType 	["front", "back"]
+RightWingPanel(faceType) -->
+	case faceType == "front" :
+		split(x) { {pillar_width 			: BrickColumn
+				   | ~rightWingTile_width 	: RightWingTile
+				   | pillar_width 			: BrickColumn
+				   | whiteColumn_width 		: WhiteColumn }*
+				 | pillar_width 			: BrickColumn
+				 | ~rightWingTile_width 	: RightWingTile
+				 | pillar_width 			: BrickColumn
+				 | rightWingMargin_width 	: RightWingMargin(faceType)}
+	else :
+		split(x) { rightWingMargin_width 	: RightWingMargin(faceType)
+				 | {pillar_width 			: BrickColumn
+				   | ~rightWingTile_width 	: RightWingTile
+				   | pillar_width 			: BrickColumn
+				   | whiteColumn_width 		: WhiteColumn }*
+				 | pillar_width 			: BrickColumn
+				 | ~rightWingTile_width 	: RightWingTile
+				 | pillar_width 			: BrickColumn }
+			 
+// right wing, margin on left side of facade
+// faceType 	["front", "back"]
+RightWingMargin(faceType) -->
+	case faceType == "front" :
+		split(x) { ~1 			: NIL
+				 | pillar_width : RightWingLedgeDecoration }
+		setupProjection(0, scope.xy, brickTex_width, brickTex_height)
+		BrickWall
+	else :
+		split(x) { pillar_width : RightWingLedgeDecoration
+				 | ~1 			: NIL}
+		setupProjection(0, scope.xy, brickTex_width, brickTex_height)
+		BrickWall
+
+// right wing tile: bricks, window, bricks
+RightWingTile -->
+	case touches(intra) :
+		setupProjection(0, scope.xy, brickTex_width, brickTex_height)
+		BrickWall
+	else :
+		case scope.sx + eps >= groundWindow_width && scope.sy + eps >= groundWindow_height :
+			RightWingTileLedgeDecoration
+			setupProjection(0, scope.xy, brickTex_width, brickTex_height)
+			split(x) { ~1 					: BrickWall
+				 	 | groundWindow_width 	: split(y) { groundWindow_height 	: Window("brickWall")
+				 							  	   	   | ~1 					: BrickWall }
+				 	 | ~1 					: BrickWall }
+		else :
+			setupProjection(0, scope.xy, brickTex_width, brickTex_height)
+			BrickWall
+			 
+// ledge decoration above windows in Right Wing
+RightWingTileLedgeDecoration -->
+	s(pillar_width, '1, '1)
+	center(x)
+	RightWingLedgeDecoration
+	
+// don't show right wing door if right wing is not on the ground
+noRightWingDoor = case rightWing_offset_y == 0 :
+				  	false
+				  else :
+				  	true
+		
+// right wing side facade, with door
+// similar to GroundFloorDoor
+RightWingSideFacade -->
+	RightWingDoorLedgeDecorations
+	split(y) { base_height 								: Base
+			 | lowerGround_height - lowerLedge_height	: LowerDoorPanel(noRightWingDoor)
+			 | lowerLedge_height						: LowerLedgePanel(noRightWingDoor)
+			 | upperGround_height - midLedge_height		: UpperDoorPanel(noRightWingDoor)
+			 | midLedge_height							: TopLedge }
+			 			
+// ledge decorations on top of right wing door panel
+RightWingDoorLedgeDecorations -->
+	split(y) { ~1 				: split(x) { { pillar_width 		: RightWingLedgeDecoration
+											 | rightWingDecoSpacing : NIL }*
+						     			   | pillar_width : RightWingLedgeDecoration }
+			 | midLedge_height 	: NIL }
+
+
+// ------------------------------
+// Tower Facade/Floors
+// ------------------------------
+
+// whole tower
+Tower -->
+	r(scopeCenter, 0, -90, 0)		// rotate to set origin of uv coords on left side of tower
+	rotateScope(0, 90, 0)
+	split(y) { groundFloor_height : TowerGround
+			 | ~1 				  : TowerMiddle
+			 | domeBase_height    : DomeBase }
+
+// ground floor of tower
+TowerGround -->
+	tileUV(0, brickTex_width, brickTex_height)
+	split(y) { base_height		  : TowerBase
+		 	 | lowerGround_height : TowerGroundLowerPart
+		 	 | upperGround_height : TowerGroundUpperPart }
+		 
+// base geometry at bottom of tower 
+TowerBase -->
+	comp(f) { side : Base }
+
+// lower part of ground floor of tower, contains darker colored bricks	
+TowerGroundLowerPart -->
+	translateUV(0, 0, -base_height/brickTex_height)
+	split(y) { ~1 				 : TowerLowerBrickWall
+			 | lowerLedge_height : TowerLowerLedge }
+	
+// lower ledge on tower
+TowerLowerLedge -->
+	comp(f) { side : LowerLedge }
+		
+// upper part of ground floor of tower, contains lighter colored bricks
+TowerGroundUpperPart -->
+	translateUV(0, 0, -(base_height + lowerGround_height)/brickTex_height)
+	split(u, unitSpace, 0) { ~1 : split(u, unitSpace, 0) { ~1 					 : TowerBrickWall
+						   								 | towerGroundDoor_width : TowerGroundDoorPanel
+						   								 | ~1 					 : TowerBrickWall }
+						   | ~1 : TowerBrickWall }
+					
+// vertical strip with tower door on ground floor
+TowerGroundDoorPanel -->
+	split(y) { terrace_height - base_height - lowerGround_height : TowerBrickWall
+			 | towerGroundDoor_height 							 : TowerGroundDoor
+			 | ~1 												 : TowerBrickWall }
+			 
+// tower door on ground floor
+TowerGroundDoor -->
+	rotateScope(0, 180, 0)
+	TowerDoor
+   	
+// middle part of tower with yellow wall
+TowerMiddle -->
+	split(y) { ~1 			   : TowerMiddlePanel
+			 | topLedge_height : TowerMiddleLedge }
+	
+// middle part of tower with yellow wall, except ledge
+TowerMiddlePanel -->
+	YellowWall
+	TowerPillarPattern("tower")
+	split(u, unitSpace, 0) { ~1 : split(u, unitSpace, 0) { ~1 				 : NIL
+														 | towerWindow_width : TowerWindowPanel
+														 | ~1 				 : NIL }
+						   | ~1 : NIL }
+
+// small constant to get rid of top/bottom of cylinder during split (comp will change scope orientation)
+const split_eps = 0.01
+
+// vertical strip with the tower windows
+TowerWindowPanel -->
+	split(y) { split_eps 						  : NIL		// to get rid of bottom of cylinder
+			 | 0.5*towerWindow_height - split_eps : TowerSplitWindow
+			 | { towerWindowSpacing : NIL
+			   | towerWindow_height : rotateScope(0, 180, 0)
+			   						  TowerWindow }*
+			 | towerWindowSpacing 				  : NIL }
+	
+// tower window above door, splits bricks and yellow wall
+TowerSplitWindow -->
+	case showSplitWindow :
+		s('1, 2*(scope.sy + split_eps ), '1)
+		t(0, -0.5*scope.sy - split_eps , 0)
+		rotateScope(0, 180, 0)
+		TowerWindow
+	else :
+		NIL
+
+// pillar pattern on tower		
+// towerPart	["tower", "domeBase"] part of tower to put pillars on
+TowerPillarPattern(towerPart) -->
+	split(u, unitSpace, 0) { ~wallMargin_width 	   : NIL
+						   | pillar_width 		   : TowerPillar(towerPart)
+						   | ~wallMargin_width 	   : NIL
+						   | pillar_width 		   : TowerPillar(towerPart)
+						   | ~2.1 				   : NIL
+						   | pillar_width 		   : ImagTowerPillar(towerPart)
+						   | ~2.1 				   : NIL
+						   | pillar_width 		   : TowerPillar(towerPart)
+						   | ~wallMargin_width	   : NIL
+						   | pillar_width 		   : TowerPillar(towerPart)
+						   | ~(2*wallMargin_width) : NIL
+						   | pillar_width 		   : TowerPillar(towerPart)
+						   | ~wallMargin_width 	   : NIL
+						   | pillar_width 		   : TowerPillar(towerPart)
+						   | ~4.6 				   : NIL
+						   | pillar_width 		   : TowerPillar(towerPart)
+						   | ~wallMargin_width 	   : NIL
+						   | pillar_width 		   : TowerPillar(towerPart)
+						   | ~wallMargin_width 	   : NIL }
+	
+// pillar on tower
+// towerPart	["tower", "domeBase"] part of tower to put pillars on
+TowerPillar(towerPart) -->
+	case towerPart == "tower" :
+		comp(f) { vertical = Pillar("midFloor", 1, 1) }
+	else :
+		comp(f) { vertical = Pillar("topFloor", 1, 0) }
+
+// imaginary pillar for ledge decorations on top of tower windows
+// towerPart	["tower", "domeBase"] part of tower with ledge decoration on top, don't put ledge decoration on domeBase
+ImagTowerPillar(towerPart) -->
+	case towerPart == "tower" :
+		comp(f) { vertical = LedgeDecoration(1) }
+	else :
+		NIL
+
+// create ledge above tower's middle part
+TowerMiddleLedge -->
+	comp(f) { side : TopLedge }
+		
+// base below dome	
+DomeBase -->
+	split(y) { ~1 				 : DomeBasePanel
+			 | lowerLedge_height : DomeBaseLedge }
+
+// base below dome, below ledges
+DomeBasePanel -->
+	split(u, unitSpace, 0) { ~1 : YellowWall
+						   | ~1 : split(u, unitSpace, 0) { ~1 				   : YellowWall
+						   								 | towerRoofDoor_width : TowerRoofDoorPanel
+						   								 | ~1 				   : YellowWall }
+						   }
+	TowerPillarPattern("domeBase")
+	
+// tower door, roof entrance
+TowerRoofDoorPanel -->
+	split(y) { towerRoofDoor_height : TowerDoor
+			 | ~1 					: YellowWall }
+		
+// create ledge above dome base (below dome)
+DomeBaseLedge -->
+	comp(f) { side : ColorLedge(pillar_color) }
+			 	
+// hemispherical dome on top of tower
+Dome -->
+	i(dome_asset)
+	color(dome_color)
+	DomeStructure.
+	comp(f) { bottom : NIL
+			| all = DomeHemisphere }		// take bottom off dome (equals sign keeps rest of hemisphere intact as connected geometry, DomeHemisphere rule is called once)
+	
+// dome without bottom
+DomeHemisphere -->
+	comp(f){ border : DomePanel }
+	
+// dome faces with ledge, each face is a panel
+DomePanel -->
+	alignScopeToGeometry(zUp, 0, 3)
+	split(y) { lowerLedge_height/2 : NIL
+			 | lowerLedge_height   : ColorLedge (dome_color)
+			 | ~1 				   : NIL }
+
+
+// ------------------------------
+// Terrace
+// ------------------------------
+
+// area of terrace with railings
+TerraceArea -->
+	[ color(terrace_color) TerraceAreaFloor. ]
+	comp(f) { top : TerraceRailing }
+	
+// railings on terrace
+TerraceRailing -->
+	split(x) { terraceRailingHBar_depth : TerraceRailingPiece
+			 | ~1 						: NIL
+			 | terraceRailingHBar_depth : TerraceRailingPiece }
+	
+// single terrace railing, top horizontal piece and wall support
+TerraceRailingPiece -->
+	extrude(terraceRailing_height)
+	split(y) { ~1 						 : TerraceRailingWall
+			 | terraceRailingHBar_height : TerraceRailingHBar }
+	
+// wall part of terrace railing
+TerraceRailingWall -->
+	s(0.5*terraceRailingHBar_depth, '1, '1)
+	center(x)
+	comp(f) { all : TerraceRailingWallFace }
+	
+// planar face of terrace railing wall
+TerraceRailingWallFace -->
+	setupProjection(0, scope.xy, brickTex_width, brickTex_height)
+	BrickWall
+	
+// horizontal part on top of terrace railing
+TerraceRailingHBar -->
+	setPivot(xyz, 1)
+	i(roofRailingHBar_asset)
+	color(terrace_color)
+	
+// stairs (on both sides) leading to terrace
+TerraceStairsArea -->
+	color(terraceStairs_color)
+	TerraceStairsFlatArea.
+	comp(f) { left  : TerraceStairs
+			| right : TerraceStairs }
+	
+// single staircase up to terrace
+TerraceStairs -->
+	rotateScope(0, 0, 180)
+	split(y) { ~terraceStep_height : TerraceStep }*
+	
+// single step in terrace staircase
+TerraceStep -->
+	extrude(split.index*terraceStep_width)
+
+
+// ------------------------------
+// Roofs
+// ------------------------------
+
+// roof of main part
+MainRoof -->
+	[ color(roof_color) RoofFloor. ]
+	MainRoofRailing
+	
+// railings on roof of main part
+MainRoofRailing -->
+	extrude(roofRailing_height)
+	comp(f) { side : MainRailing }
+	
+// railing piece along one side of building on main roof
+MainRailing -->
+	t(0, 0, -roofRailingHBar_depth)
+	extrude(roofRailingHBar_depth)
+	setPivot(yzx, 3)
+	split(y) { ~1 						: MainRailingVBars
+			 | roofRailingHBar_height 	: HBar }
+	
+// vertical bars on railing piece on main roof		 
+MainRailingVBars -->
+	s(scope.sx - roofRailingHBar_depth + roofRailingVBar_width, '1, roofRailingVBar_width)
+	center(xz)
+	split(x) { { roofRailingVBar_width 	 : VBar
+			   | ~mainRoofRailingSpacing : NIL }*
+			 | roofRailingVBar_width : NIL}
+		
+// roof of right wing
+RightWingRoof -->
+	// roof floor
+	[ color(roof_color) RightWingRoofFloor. ]
+	// Note: no railing on left side so that window is not occluded (also why extruding the roof followed by comp doesn't work)
+	// railing above front and back facades (facades with windows)
+	[ split(y) { roofRailingHBar_depth : extrude(roofRailing_height) 
+										 comp(f) { front : RightWingRailing("front") }	// use comp to set trim planes
+			   | ~1 				   : NIL
+			   | roofRailingHBar_depth : extrude(roofRailing_height)
+			   							 comp(f) { back : RightWingRailing("back") } } ]
+	// railing above side facade (facade with door)
+	[ split(x) { ~1 				   : NIL
+			   | roofRailingHBar_depth : extrude(roofRailing_height)
+			   							 comp(f) { right : RightWingRailing("side") } } ]
+
+// railing for a facade side on top of RightWing roof
+// faceType 	["front", "back", "side"]
+RightWingRailing(faceType) -->
+	case faceType == "front" :
+		t(0, 0, -roofRailingHBar_depth)
+		extrude(roofRailingHBar_depth)
+		setPivot(yzx, 3)
+		split(x) { {~rightWingTile_width + 2*pillar_width		: RightWingRailingTile
+				   | whiteColumn_width 							: NIL }*
+				 | ~rightWingTile_width + 2*pillar_width	: RightWingRailingTile
+				 | rightWingMargin_width 					: RightWingRailingMargin }				 
+	case faceType == "back" :
+		t(0, 0, -roofRailingHBar_depth)
+		extrude(roofRailingHBar_depth)
+		setPivot(yzx, 3)
+		split(x) { rightWingMargin_width 					: RightWingRailingMargin
+				 | {~rightWingTile_width + 2*pillar_width		: RightWingRailingTile
+				   | whiteColumn_width 							: NIL }*
+				 | ~rightWingTile_width + 2*pillar_width	: RightWingRailingTile }
+	else :			// "side"
+		t(0, 0, -roofRailingHBar_depth)
+		extrude(roofRailingHBar_depth)
+		setPivot(yzx, 3)
+		split(y) { ~1 					  : RightWingSideRailingVBars
+			 	 | roofRailingHBar_height : HBar }
+	
+	
+// right wing roof, railing piece above window tile
+RightWingRailingTile -->
+	set(trim.vertical, false)	// disable vertical trimming, don't cut horizontal bars for railing tile
+	split(y) { ~1 					  : split(x) { pillar_width : RightWingVBarBox
+							 					 | ~1 			: NIL
+							 					 | pillar_width : RightWingVBarBox
+			 				 					 | ~1 			: NIL
+			 				 					 | pillar_width : RightWingVBarBox }
+			 | roofRailingHBar_height : HBar }
+	  
+// horizontal roof railing piece over margin area of right wing
+RightWingRailingMargin -->
+	split(y) { ~1 						: NIL
+			 | roofRailingHBar_height 	: HBar }
+			 
+// vertical bars in railing over right side of right wing, with uniform spacing between vertical bars
+RightWingSideRailingVBars -->
+	split(x) { roofRailingHBar_depth/2 - roofRailingVBar_width/2 : NIL
+			 | { pillar_width 			: RightWingVBarBox
+			 | ~rightWingDecoSpacing 	: NIL }*
+			 | pillar_width 									 : RightWingVBarBox
+			 | roofRailingHBar_depth/2 - roofRailingVBar_width/2 : NIL }
+			 
+// scope box for vertical railing piece on right wing roof
+RightWingVBarBox -->
+	s('1, '1, roofRailingVBar_width)
+	center(z)
+	VBar
+		
+// roof of left wing
+LeftWingRoof -->
+	s('2, '1, '1)						// create roof on double sized roof footprint
+	roofHip(leftWingRoofAngle)
+	s('1, leftWingRoof_height, '1)		// set roof height
+	color(roof_color)
+	split(x) { '0.5 : cleanupGeometry(vertices, 0.1) LeftWingRoofSolid.
+			 | '0.5 : NIL }
+
+	
+
+// ------------------------------
+// Materials and Assets
+// ------------------------------
+	
+// base of all building parts
+Base -->
+	s(scope.sx + 2*base_depth, '1, base_depth)			// extend in x past facade, will get trimmed
+	center(x)
+	i(base_asset)
+	color(base_color)
+
+// door on Main and RightWing
+Door -->
+	s('1, '1, door_depth)
+	DoorFrame
+	DoorWall
+	
+// height of door asset
+door_assetHeight = assetInfo(doorWall_asset, ty) - assetInfo(doorFrame_asset, ty) + assetInfo(doorWall_asset, sy)
+// relative size of door frame height to total door asset height
+doorFrame_relSize = assetInfo(doorFrame_asset, sy)/door_assetHeight
+// relative size of door wall height to total door asset height
+doorWall_relSize = assetInfo(doorWall_asset, sy)/door_assetHeight
+	
+// frame of door, including inner hall and ground
+DoorFrame -->
+	t(0, 0, -door_depth*0.95)
+	DoorPlane
+	split(y) { scope.sy*doorFrame_relSize : i(doorFrame_asset)
+										    color(brick_color)
+										    DoorFrameAsset.
+			 | ~1 						  : NIL }
+	
+// plane containing door texture
+DoorPlane -->
+	i(doorPlane_asset)
+	split(x) { ~1   : YellowWall
+			 | '0.7 : split(y) { '0.75 : DoorTextureArea
+			 				   | ~1    : YellowWall }
+			 | ~1   : YellowWall }
+			 
+// part of the door with the door texture
+DoorTextureArea -->
+	setupProjection(0, scope.xy, '1, '1)
+	texture(door_tex)
+	projectUV(0)
+	
+// wall pieces in the top corners above the rounded door frame
+DoorWall -->
+	split(y) { ~1 						 : NIL
+			 | scope.sy*doorWall_relSize : i(doorWall_asset)
+			 							   BrickWall }
+	
+// window
+// wallType 	["brickWall", "yellowWall"] type of wall in top corners above rounded window frame
+Window(wallType) -->
+	s('1, '1, window_depth)
+	WindowFrame
+	WindowGlass
+	WindowWall(wallType)
+		
+// frame and inner grid of window
+WindowFrame -->
+	t(0, 0, '-0.8)
+	i(windowFrame_asset)
+	color(brick_color)
+	
+// window glass
+WindowGlass -->
+	t(0, 0, '-0.15)
+	i(windowGlass_asset)
+	Glass(false)  // not transparent
+	
+// relative size of window wall height to window height
+windowWall_relSize = assetInfo(windowWall_asset, sy)/assetInfo(windowFrame_asset, sy)
+
+// wall pieces in the top corners above the rounded window frame
+// wallType 	["brickWall", "yellowWall"] type of wall in top corners above rounded window frame
+WindowWall(wallType) -->
+	case wallType == "brickWall" :
+		split(y) { ~1 						   : NIL
+				 | scope.sy*windowWall_relSize : i(windowWall_asset) BrickWall }
+	else :
+		split(y) { ~1 						   : NIL
+				 | scope.sy*windowWall_relSize : i(windowWall_asset) YellowWall }
+	
+	
+// lower part of GroundFloor (with darker gray bricks)
+LowerBrickWall -->
+	color(lowerBrick_color)
+	texture(brickWall_tex)
+	projectUV(0)
+
+// upper part of GroundFloor (with lighter gray bricks)
+BrickWall -->
+	color(brick_color)
+	texture(brickWall_tex)
+	projectUV(0)
+
+// on tower, lower part of GroundFloor (with darker gray bricks)
+TowerLowerBrickWall -->
+	color(lowerBrick_color)
+	texture(brickWall_tex)
+	
+// on tower, upper part of GroundFloor (with lighter gray bricks)
+TowerBrickWall -->
+	color(brick_color)
+	texture(brickWall_tex)
+
+// yellow wall on upper floors
+YellowWall --> 
+	color(wall_color)
+	
+// ledge below GroundFloor windows
+LowerLedge -->
+	s(scope.sx + 2*lowerLedge_depth, '1, lowerLedge_depth) 		// extend in x past facade, will get trimmed
+	center(x)
+	i(lowerLedge_asset)
+	color(lowerBrick_color)
+	
+// ledge going through door, create each side separately
+// neighSide		["left", "right"] left or right of door?
+LowerLedge(neighSide) -->
+	case neighSide == "left" :
+		s(scope.sx + lowerLedge_depth, '1, lowerLedge_depth)	// extend in x past facade in one dir, will get trimmed
+		t(-lowerLedge_depth, 0, 0)
+		i(lowerLedge_asset)
+		color(lowerBrick_color)
+	else :
+		s(scope.sx + lowerLedge_depth, '1, lowerLedge_depth)	// extend in x past facade in one dir, will get trimmed
+		i(lowerLedge_asset)
+		color(lowerBrick_color)
+
+// same asset as lower ledge, but allows a color parameter
+// param_ledge_color 	hex code for color of ledge
+ColorLedge (param_ledge_color) -->
+	s(scope.sx + 2*lowerLedge_depth, '1, lowerLedge_depth)	// extend in x past facade, will get trimmed
+	center(x)
+	i(lowerLedge_asset)	
+	color(param_ledge_color)
+
+// ledge above each floor except top floor
+MidLedge -->
+	s(scope.sx + 2*midLedge_depth, '1, midLedge_depth)		// extend in x past facade, will get trimmed
+	center(x)
+	color(ledge_color)
+	i(midLedge_asset)
+	color(ledge_color)
+	
+// ledge above top floor of any building part
+TopLedge -->
+	s(scope.sx + 2*topLedge_depth, '1, topLedge_depth)		// extend in x past facade, will get trimmed
+	center(x)
+	i(topLedge_asset)
+	color(ledge_color)
+
+	
+// pillar/columns structure flanking the windows, also top ledge decorations that appear above pillars
+// floorType			["midFloor", "topFloor"]
+// showPillar 			[0,1] show pillar, 0: show wall
+// showLedgeDecoration	[0,1] show ledge decoration on top of pillar on top floor
+Pillar(floorType, showPillar, showLedgeDecoration) -->
+	case showPillar==0 :
+		YellowWall
+		LedgeDecoration(showLedgeDecoration)
+	else :
+		case floorType == "topFloor" :
+			[ s('1, '1, pillar_depth)
+			  i(topPillar_asset)
+			  color(pillar_color)
+			  TopPillar. ]
+			LedgeDecoration(showLedgeDecoration)
+		else :
+			[ s('1, '1, pillar_depth) i(midPillar_asset) color(pillar_color) MidPillar. ]
+			LedgeDecoration(showLedgeDecoration)
+			
+// ledge decoration above pillar on top floor
+// showLedgeDecoration	[0,1] show ledge decoration on top of pillar on top floor
+LedgeDecoration(showLedgeDecoration) -->
+	case showLedgeDecoration == 1 :
+		[ t(0, scope.sy + 0.1*topLedge_height, 0)
+	  	  s('0.33, 0.5*topLedge_height, 0.15)
+	  	  i(ledgeDecoration_asset)
+	  	  color(ledge_color)
+	  	  LedgeDecoration1. ]
+		[ t('0.67, scope.sy + 0.1*topLedge_height, 0)
+	  	  s('0.33, 0.5*topLedge_height, 0.15)
+	  	  i(ledgeDecoration_asset)
+	  	  color(ledge_color)
+	  	  LedgeDecoration2. ]
+	else :
+		NIL
+
+// ledge decorations on top ledge of right wing
+RightWingLedgeDecoration -->
+	[ t(0, scope.sy + 0.15*midLedge_height, 0)
+  	  s('0.33, 0.45*midLedge_height, 0.15)
+  	  i(ledgeDecoration_asset)
+  	  color(ledge_color)
+  	  LedgeDecoration1. ]
+	[ t('0.67, scope.sy + 0.15*midLedge_height, 0)
+  	  s('0.33, 0.45*midLedge_height, 0.15)
+  	  i(ledgeDecoration_asset)
+  	  color(ledge_color)
+  	  LedgeDecoration2. ]
+
+// brick columns flanking right wing windows
+BrickColumn -->
+	RightWingLedgeDecoration
+	split(y) { brick_height : SingleBrick }*
+	
+// single brick in brick column on right wing facade
+SingleBrick -->
+	s('1, '1, 0.07)
+	i(squareBrick_asset)
+	color(brick_color)
+	
+// white column in between tiles in right wing facade
+WhiteColumn -->
+	color(column_color)
+		
+// flat, horizontal, top part of railing
+HBar -->
+	i(roofRailingHBar_asset)
+	color(railingHBar_color)
+		
+// vertical part of railing, single piece
+VBar -->
+	set(trim.vertical, false)		// disable vertical trimming for the following elements to prevent the vertical corner bars from being cut
+	i(roofRailingVBar_asset)
+	color(railingVBar_color)
+
+// tower door, ground floor and rooftop entrances
+TowerDoor -->
+	s('1, '1, 0.1)
+	t(0, 0, -0.1)
+	primitiveCube()
+	reverseNormals()
+	comp(f) { front  : DoorTextureArea
+			| back   : NIL
+			| all    : color(brick_color) PlainWall. }
+
+// tower window
+TowerWindow -->
+	case scope.sy + eps >= towerWindow_height :
+		t(0, 0, scope.sz + 0.2*window_depth)
+		s('1, '1, window_depth)
+		WindowFrame
+		WindowGlass
+	else :
+		YellowWall
+			  			  	
+// ------
+
+// glass material for windows
+// isTransparent 	[true, false] true: use default opacity, false: opacity=1
+Glass(isTransparent) -->   
+	case glass_material == "CE Blue":
+		case isTransparent :
+			color(0.7,0.75,1)
+            set(material.ambient.r,0) set(material.ambient.g,0) set(material.ambient.b,1)
+            set(material.specular.r,0.8) set(material.specular.g,0.8) set(material.specular.b,0.8)
+            set(material.reflectivity,0.8) set(material.shininess,50) set(material.opacity,0.6)
+		else :
+           	color(0.7,0.75,1)
+            set(material.ambient.r,0) set(material.ambient.g,0) set(material.ambient.b,1)
+            set(material.specular.r,0.8) set(material.specular.g,0.8) set(material.specular.b,0.8)
+            set(material.reflectivity,0.8) set(material.shininess,50)
+     		set(material.opacity,1)
+	case glass_material == "CE Dark Blue":
+		case isTransparent :
+            color(0.2,0.2,0.25)
+            set(material.ambient.r,0) set(material.ambient.g,0) set(material.ambient.b,0.1)
+            set(material.specular.r,0.8) set(material.specular.g,0.8) set(material.specular.b,0.8)
+            set(material.reflectivity,0.6) set(material.shininess,50) set(material.opacity,0.8)     
+		else :
+            color(0.2,0.2,0.25)
+            set(material.ambient.r,0) set(material.ambient.g,0) set(material.ambient.b,0.1)
+            set(material.specular.r,0.8) set(material.specular.g,0.8) set(material.specular.b,0.8)
+            set(material.reflectivity,0.6) set(material.shininess,50)     
+    		set(material.opacity,1)
+	case glass_material == "CE Green":
+		case isTransparent :
+            color(0.4,0.5,0.4)
+            set(material.ambient.r,0) set(material.ambient.g,0.2) set(material.ambient.b,0.05)
+            set(material.specular.r,0.8) set(material.specular.g,0.8) set(material.specular.b,0.8)
+            set(material.reflectivity,0.8) set(material.shininess,50) set(material.opacity,0.6)     
+		else :
+            color(0.4,0.5,0.4)
+            set(material.ambient.r,0) set(material.ambient.g,0.2) set(material.ambient.b,0.05)
+            set(material.specular.r,0.8) set(material.specular.g,0.8) set(material.specular.b,0.8)
+            set(material.reflectivity,0.8) set(material.shininess,50)
+    		set(material.opacity,1)
+	case glass_material == "CE Brown":
+		case isTransparent :
+            color(0.3,0.25,0.2)
+            set(material.ambient.r,0.2) set(material.ambient.g,0.1) set(material.ambient.b,0)
+            set(material.specular.r,0.8) set(material.specular.g,0.8) set(material.specular.b,0.8)
+            set(material.reflectivity,0.8) set(material.shininess,50) set(material.opacity,0.6)     
+		else :
+            color(0.3,0.25,0.2)
+            set(material.ambient.r,0.2) set(material.ambient.g,0.1) set(material.ambient.b,0)
+            set(material.specular.r,0.8) set(material.specular.g,0.8) set(material.specular.b,0.8)
+            set(material.reflectivity,0.8) set(material.shininess,50)     
+    		set(material.opacity,1)
+	case glass_material == "CE Black":
+ 		case isTransparent :
+            color(0.1,0.1,0.1)
+            set(material.specular.r,0.8) set(material.specular.g,0.8) set(material.specular.b,0.8)
+            set(material.reflectivity,0.7) set(material.shininess,50) set(material.opacity,0.8)     
+		else :
+            color(0.1,0.1,0.1)
+            set(material.specular.r,0.8) set(material.specular.g,0.8) set(material.specular.b,0.8)
+            set(material.reflectivity,0.7) set(material.shininess,50)     
+    		set(material.opacity,1)
+	case glass_material == "iRay Glass":
+ 		case isTransparent :
+            color(0.35,0.37,0.5)
+			set(material.specular.r,0.8) set(material.specular.g,0.8) set(material.specular.b,0.8)
+            set(material.reflectivity,0.8) set(material.shininess,128) set(material.opacity,0.8) 
+		else :
+            color(0.35,0.37,0.5)
+			set(material.specular.r,0.8) set(material.specular.g,0.8) set(material.specular.b,0.8)
+            set(material.reflectivity,0.8) set(material.shininess,128) 
+    		set(material.opacity,1)
+	else:
+ 		case isTransparent :
+            color(1,1,1)
+            set(material.opacity,0.8) 
+		else :
+			color(1,1,1)
+    		set(material.opacity,1)
+    		
+

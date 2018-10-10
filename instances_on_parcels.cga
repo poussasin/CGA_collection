@@ -1,0 +1,107 @@
+/**
+ * File:    instances_on_parcels.cga
+ * Created: 30 May 2016 15:45:19 GMT
+ * Author:  Esri R&D Center Zurich
+ */
+
+version "2016.0"
+
+
+import Plant_Distributor:"/ESRI.lib/rules/Plants/Plant_Distributor.cga"
+
+
+################################################################
+## ATTRIBUTES
+##
+
+@Order(1) @Directory
+@Description("folder containing building assets")
+attr buildingLibrary = "assets/"
+
+# get random building from library folder
+getRandomBuilding = fileRandom(buildingLibrary + "scifi_building_*.obj")
+
+
+const edge_width = 1
+const extrude_height = 5
+const green = "#00a651"
+const blue = "#004ab3"
+const red = "#a20102"
+
+################################################################
+## START RULES
+## 
+
+@StartRule
+Lot -->
+	Ground
+	//Outline
+	innerRectangle(edge) { shape: Footprint(getRandomBuilding) | remainder: OuterRingPlants }
+	//innerRectangle(edge) { shape: Extrude(green) | remainder: Ground }
+	//innerRectangle(scope) { shape: Footprint(getRandomBuilding) | remainder: OuterRingPlants }
+	//innerRectangle(scope) { shape: Extrude(red) | remainder: Ground }
+	//innerRect Extrude(blue)
+	
+@StartRule
+Street -->
+	color(0.1, 0.1, 0.1)
+	set(material.specular.r, 1)
+	set(material.specular.g, 1)
+	set(material.specular.b, 1)
+	set(material.shininess, 20)
+	set(material.reflectivity, 0.3)
+
+@StartRule	
+LotInner -->
+	Ground
+	set(Plant_Distributor.Mix, "Custom")
+	set(Plant_Distributor.Keyword, "Baldcypress")
+	set(Plant_Distributor.Density, 0.2)
+	Plant_Distributor.Generate
+
+Sidewalk 		--> color(0, 0, 0)
+Crossing 		--> Street
+Junction 		--> Street
+JunctionEntry 	--> Street
+Joint		 	--> Street
+Freeway 		--> Street
+FreewayEntry	--> Street
+Roundabout		--> Street
+RoundaboutIsland--> Street
+RoundaboutEntry --> Street
+
+
+################################################################
+## RULES
+## 
+		
+Footprint(asset) -->
+	alignScopeToGeometry(yUp, any, longest)
+	i(asset)
+	set(material.specular.r, 0.5)
+	set(material.specular.g, 0.5)
+	set(material.specular.b, 0.5)
+	set(material.reflectivity, 0.2)
+	
+Ground -->
+	color("#ccded8")
+	set(material.specular.r, 0.2)
+	set(material.specular.g, 0.2)
+	set(material.specular.b, 0.2)
+	set(material.reflectivity, 0.1)
+	
+OuterRingPlants -->
+	set(Plant_Distributor.Mix, "Custom")
+	set(Plant_Distributor.Keyword, "Leyland Cypress")
+	set(Plant_Distributor.Density, 0.04)
+	Plant_Distributor.Generate
+	
+Outline -->
+	comp(e) { all: color(0, 0, 0) s('1, edge_width, edge_width) primitiveCube() Edge. }
+	
+Extrude(blockColor) -->
+	alignScopeToGeometry(yUp, any, longest)
+	extrude(extrude_height)
+	color(blockColor)
+	set(material.opacity, 0.5)
+	

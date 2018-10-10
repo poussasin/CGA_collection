@@ -1,0 +1,459 @@
+/**
+ *
+ Authors:
+ Matthias Buehler, Esri R&D Center Zurich
+ Seiler & Seiler, http://seilerseiler.com
+ */
+
+version "2014.1"
+
+import text : "rules/helpers/CenteredText.cga"
+
+############################################################
+# ATTRIBUTES
+############################################################
+
+@Group ("PARCEL", 0)				@Order(0)
+attr parcelArea 					= 0			# sample from parcel shape's object attr
+
+@Group ("ZONING", 1)				@Order(0)
+attr visualizeBrokenLaw				= false
+
+@Group ("BUILDING", 2)				@Order(0)
+attr createBuilding					= true
+@Group ("BUILDING")					@Order(1)
+attr numberFloors					= 6
+@Group ("BUILDING")					@Order(2)
+attr groundFloorHeight				= 5.5
+@Group ("BUILDING")					@Order(3)
+attr upperFloorHeight				= 3.5
+
+@Group ("buildingUsageS", 3)		@Order(0)			@Range("Assembly","Agricultural","Educational","Industry","Mercantile","Office","Public","Residential","Service","Storage","Transport","Utility","Other","Unknown")
+attr buildingUsage1					= "Mercantile"
+@Group ("buildingUsageS")			@Order(1)			@Range("Assembly","Agricultural","Educational","Industry","Mercantile","Office","Public","Residential","Service","Storage","Transport","Utility","Other","Unknown")
+attr buildingUsage2					= "Office"
+@Group ("buildingUsageS")			@Order(2)
+attr startFloorbuildingUsage2		= 2
+@Group ("buildingUsageS")			@Order(3)			@Range("Assembly","Agricultural","Educational","Industry","Mercantile","Office","Public","Residential","Service","Storage","Transport","Utility","Other","Unknown")
+attr buildingUsage3					= "Residential"
+@Group ("buildingUsageS")			@Order(4)
+attr startFloorbuildingUsage3		= 4
+
+@Group ("BUILDING VOLUME", 4)		@Order(0)
+attr volumeChangeFloorID			= 15
+@Group ("BUILDING VOLUME")			@Order(1)
+attr volumeChangeRotation			= 360
+@Group ("BUILDING VOLUME")			@Order(2)
+attr relVolumeChangeSplit			= .5
+
+@Group ("FACADES", 5)				@Order(0)
+attr tileWidth						= 7
+@Group ("BUILDING VOLUME")			@Order(1)
+attr sideWidth						= 2
+@Group ("BUILDING VOLUME")			@Order(2)
+attr windowBaseHeight				= .5
+@Group ("BUILDING VOLUME")			@Order(3)
+attr windowTopHeight				= .5
+
+############################################################
+# GENERIC ATTRIBUTES
+############################################################
+
+@Hidden
+attr currentFloorID = 0
+@Hidden
+attr floorType = ""
+@Hidden
+attr floorUsage = ""
+@Hidden
+attr surfaceType = ""
+@Hidden
+attr lawState = ""
+
+
+############################################################
+# FUNCTIONS
+############################################################
+
+buildingUsageColor (buildingbuildingUsage) =
+	case buildingbuildingUsage == "Assembly"				: "#f8c283"
+	case buildingbuildingUsage == "Agricultural"			: "#cccc00"
+	case buildingbuildingUsage == "Educational"				: "#ad89ba"
+	case buildingbuildingUsage == "Industry"				: "#7a85c8"
+	case buildingbuildingUsage == "Mercantile"				: "#777777"
+	case buildingbuildingUsage == "Office"					: "#B884D5"
+	case buildingbuildingUsage == "Public"					: "#BCD4D5"
+	case buildingbuildingUsage == "Residential"				: "#bb4646"
+	case buildingbuildingUsage == "Service"					: "#d08c6e"
+	case buildingbuildingUsage == "Storage"					: "#444444"
+	case buildingbuildingUsage == "Transport"				: "#444444"
+	case buildingbuildingUsage == "Utility"					: "#444444"
+	case buildingbuildingUsage == "Other"					: "#444444"
+	case buildingbuildingUsage == "Unknown"					: "#444444"
+	else /*error*/											: "#000000"
+
+
+############################################################
+# START SHAPES
+############################################################
+
+
+@StartRule
+Footprint -->
+	case createBuilding :
+		alignScopeToAxes(y)
+		report("Density", geometry.area / parcelArea)
+		t(0,0.01,0) 				# prevent occlusion overlaps
+		BuildingExtrusion
+		text.MeasureText
+	else:
+		Footprint.
+		text.MeasureText
+
+
+############################################################
+# BUILDING EXTRUSION
+############################################################
+
+extrusionHeight = case currentFloorID == 0 : groundFloorHeight else : upperFloorHeight
+
+BuildingExtrusion -->									
+	BuildingRecursion
+
+
+
+floorUsageFunction =
+	case currentFloorID >= startFloorbuildingUsage3 - 1 :
+		buildingUsage3
+	case currentFloorID >= startFloorbuildingUsage2 - 1 :
+		buildingUsage2
+	else :
+		buildingUsage1
+		
+BuildingRecursion -->									# recursively create floors
+	case currentFloorID == rint(numberFloors) :
+		NIL
+	case currentFloorID == rint(volumeChangeFloorID) - 1:
+		set(floorUsage, floorUsageFunction)
+		rotateScope(0,0,volumeChangeRotation)
+		split(x) {'relVolumeChangeSplit : set(surfaceType, "roof surface") Surfaces | ~1 : NewFloor}
+	else :
+		set(floorUsage, floorUsageFunction)
+		NewFloor
+
+NewFloor -->
+	t(0,0,0.005) # prevent flickering
+	color(.7,.7,.7) Floor.
+	extrude(world.up, extrusionHeight)
+	FloorTypes
+	# continue recursion
+	set (currentFloorID, currentFloorID + 1)
+	comp(f) {top : BuildingRecursion}
+	
+	# send the volume to reporting (special case)
+	set(surfaceType, "floor volume")
+	Surfaces
+
+############################################################
+# FLOOR TYPES
+############################################################
+
+FloorTypes -->
+	case currentFloorID == 0 :
+		set(floorType, "ground floor")
+		ZoningValidation
+	case currentFloorID == rint(numberFloors) -1:
+		set(floorType, "top floor")
+		ZoningValidation
+	else :
+		set(floorType, "standard floor")
+		ZoningValidation
+
+############################################################
+# ZONING VALIDATION
+############################################################
+
+ZoningValidation -->
+	case !visualizeBrokenLaw :
+		set(lawState, "legal")
+		FloorComp
+	else:
+		case inside :
+			set(lawState, "legal")
+			FloorComp
+		else :
+			set(lawState, "broken")
+			FloorComp
+
+############################################################
+# FLOOR TYPE
+############################################################
+
+FloorComp -->
+	case floorType == "top floor":
+		t(0,1000,0)
+		comp(f) {	top:
+						# top floor creates roof
+						alignScopeToAxes(y)
+						t(0,-1000,0)
+						set(surfaceType, "roof surface")
+						Surfaces
+					| side:
+						alignScopeToAxes(y)
+						t(0,-1000,0)
+						Facade}
+	else:
+		t(0,1000,0)
+		comp(f) { 	side:
+						alignScopeToAxes(y)
+						t(0,-1000,0)
+						Facade}
+
+############################################################
+# FACADES
+############################################################
+
+Facade -->
+	split(y) {windowBaseHeight : set(surfaceType, "facade surface") Surfaces | ~1 : split(x) {~ tileWidth : Tile}* | windowTopHeight : set(surfaceType, "facade surface") Surfaces}
+	
+Tile -->
+	split(x) {sideWidth : set(surfaceType, "facade surface") Surfaces | ~1 : set(surfaceType, "glass surface") Surfaces | sideWidth : set(surfaceType, "facade surface") Surfaces}
+
+############################################################
+# SURFACES
+############################################################
+
+Surfaces -->
+	# full floor volume, gets deleted.
+	case surfaceType == "floor volume" :
+		report("Floor Volume", geometry.volume)
+		report("GFA." + floorUsage + "_Area", geometry.area(bottom))
+		report("FAR", geometry.area(bottom) / parcelArea)
+		NIL
+	
+	# rest
+	case surfaceType == "roof surface" :
+		report("Roof Surface", geometry.area())
+		Coloring
+	case surfaceType == "facade surface" :
+		report("Facade Surface", geometry.area())
+		Coloring
+	case surfaceType == "glass surface" :
+		report("Glass Surface", geometry.area())
+		Coloring
+	else :
+		NIL
+
+############################################################
+# COLORING
+############################################################
+
+Coloring -->
+	case lawState == "broken" :
+		case surfaceType == "glass surface" :
+			set(material.opacity, 0.9)
+			color(1,0,0)
+		else:
+			color(1,0,0)
+	else:
+		case surfaceType == "glass surface" :
+			set(material.opacity, 0.2)
+			color(buildingUsageColor(floorUsage))
+		else:
+			color(buildingUsageColor(floorUsage))	
+
+
+############################################################
+# TEXT MEASUREMENTS
+############################################################
+
+
+
+
+
+
+
+
+style Residential_SingleFamilyHome
+attr visualizeBrokenLaw = false
+attr numberFloors = 2.0
+attr groundFloorHeight = 3.0
+attr upperFloorHeight = 3.0
+attr buildingUsage1 = "Residential"
+attr buildingUsage2 = "Residential"
+attr startFloorbuildingUsage2 = 100.0
+attr startFloorbuildingUsage3 = 100.0
+attr volumeChangeFloorID = 100.0
+attr sideWidth = 0.0
+
+
+style Residential_TerracedHouse extends Residential_SingleFamilyHome
+attr numberFloors = 3.0
+
+
+style Residential_ApartementBuilding
+attr visualizeBrokenLaw = false
+attr numberFloors = 10.0
+attr groundFloorHeight = 3.0
+attr upperFloorHeight = 3.0
+attr buildingUsage1 = "Residential"
+attr buildingUsage2 = "Residential"
+attr startFloorbuildingUsage2 = 100.0
+attr startFloorbuildingUsage3 = 100.0
+attr volumeChangeFloorID = 100.0
+attr sideWidth = 0.0
+
+
+style Residential_Tower extends Residential_ApartementBuilding
+attr numberFloors = 25.0
+
+
+style Residential_HighRise extends Residential_ApartementBuilding
+attr numberFloors = 80.0
+
+
+style Office_Multistorey
+attr visualizeBrokenLaw = false
+attr numberFloors = 10.0
+attr groundFloorHeight = 4.5
+attr upperFloorHeight = 4.5
+attr buildingUsage1 = "Office"
+attr buildingUsage2 = "Office"
+attr startFloorbuildingUsage2 = 100.0
+attr buildingUsage3 = "Office"
+attr startFloorbuildingUsage3 = 100.0
+attr volumeChangeFloorID = 100.0
+attr sideWidth = 0.0
+
+
+style Office_Tower extends Office_Multistorey
+attr numberFloors = 25.0
+
+
+style Office_HighRise
+attr visualizeBrokenLaw = false
+attr numberFloors = 80.0
+attr groundFloorHeight = 4.5
+attr upperFloorHeight = 4.5
+attr buildingUsage1 = "Office"
+attr buildingUsage2 = "Office"
+attr startFloorbuildingUsage2 = 100.0
+attr buildingUsage3 = "Office"
+attr startFloorbuildingUsage3 = 100.0
+attr volumeChangeFloorID = 100.0
+attr sideWidth = 0.0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+style Educational_PrimaryEducation
+attr visualizeBrokenLaw = false
+attr numberFloors = 4.0
+attr groundFloorHeight = 3.5
+attr upperFloorHeight = 3.5
+attr buildingUsage1 = "Educational"
+attr buildingUsage2 = "Educational"
+attr startFloorbuildingUsage2 = 100.0
+attr buildingUsage3 = "Educational"
+attr startFloorbuildingUsage3 = 100.0
+attr volumeChangeFloorID = 100.0
+attr sideWidth = 0.0
+
+
+style Educational_Preschool
+attr visualizeBrokenLaw = false
+attr numberFloors = 2.0
+attr groundFloorHeight = 3.5
+attr upperFloorHeight = 3.5
+attr buildingUsage1 = "Educational"
+attr buildingUsage2 = "Educational"
+attr startFloorbuildingUsage2 = 100.0
+attr buildingUsage3 = "Educational"
+attr startFloorbuildingUsage3 = 100.0
+attr volumeChangeFloorID = 100.0
+attr sideWidth = 0.0
+
+
+style MixedUse_MercantileResidential
+attr visualizeBrokenLaw = false
+attr numberFloors = 10.0
+attr groundFloorHeight = 4.5
+attr upperFloorHeight = 3.0
+attr buildingUsage1 = "Mercantile"
+attr buildingUsage2 = "Residential"
+attr startFloorbuildingUsage2 = 2.0
+attr buildingUsage3 = "Residential"
+attr startFloorbuildingUsage3 = 100.0
+attr volumeChangeFloorID = 100.0
+attr sideWidth = 0.0
+
+
+style MixedUse_MercantileOfficeResidential extends MixedUse_MercantileResidential
+attr upperFloorHeight = 4.5
+attr buildingUsage2 = "Office"
+attr startFloorbuildingUsage3 = 4.0
+
+
+style MixedUss_MercantileOfficeResidential_Base_Tower extends MixedUse_MercantileOfficeResidential
+attr visualizeBrokenLaw = true
+attr buildingUsage1 = "Mercantile"
+attr volumeChangeFloorID = 3.0
+attr volumeChangeRotation = 450.0
+attr relVolumeChangeSplit = 0.33
+
+
+style Residential_ApartmentBuilding_Penthouse
+attr visualizeBrokenLaw = true
+attr numberFloors = 10.0
+attr groundFloorHeight = 4.5
+attr upperFloorHeight = 3.0
+attr buildingUsage1 = "Residential"
+attr buildingUsage2 = "Residential"
+attr startFloorbuildingUsage2 = 100.0
+attr buildingUsage3 = "Residential"
+attr startFloorbuildingUsage3 = 100.0
+attr volumeChangeFloorID = 9.0
+attr sideWidth = 0.0
+attr volumeChangeRotation = 90.0
+attr relVolumeChangeSplit = 0.5
+attr windowBaseHeight = 0.66

@@ -1,0 +1,214 @@
+/**
+ * File:    Guideway.cga
+ * Created: 19 Jun 2012 13:23:23 GMT
+ * Author:  Esri
+ */
+
+version "2014.0"
+
+
+################################################
+# DISPLAY OPTIONS
+
+@Group("DISPLAY OPTIONS",0) @Order(1)
+attr Display_Textures = true
+
+@Group("DISPLAY OPTIONS") @Order(2)
+@Range("Thematics Off", "Solid Color")
+attr Display_Thematics = "Thematics Off" 
+
+@Group("DISPLAY OPTIONS") @Order(3)
+attr Solid_Color = "#FFFFFF"
+
+@Group("DISPLAY OPTIONS") @Order(4) @Range(0,1)
+attr Transparency = 1
+
+texturingOn = Display_Textures 	# Shorthand.
+thematicsOn = Display_Thematics != "Thematics Off"
+coloringOn = !thematicsOn && texturingOn	# Shorthand.
+const usageColoringOn = Display_Thematics == "Usage"
+
+const peakRunoffDisplayOn = Display_Thematics == "Peak Runoff/Permeability"
+
+thematicColor = 
+#	case Display_Thematics == "Peak Runoff/Permeability":
+		# Specific materials will be colored down the road, but everything else will use white.
+#		"#FFFFFF"
+	case Display_Thematics == "Solid Color":
+		Solid_Color
+#	case Display_Thematics == "Usage":
+#		"#FFFFFF" # Will be overwritten at material level.
+	else:
+		"#FFFFFF"
+
+
+################################################
+
+TextureSwitch -->
+	case texturingOn: X.
+	else: deleteUV(0) X.
+	
+	
+	
+
+# This is a constant so that it fits out train model exactly.
+const Rail_Dist = 1.6
+
+
+@Group ("GUIDEWAY",1) @Order(1)
+attr Track_Dist = 2.5
+
+@Group ("GUIDEWAY") @Order(10)
+attr Train_On_Track_1 = false
+
+@Group ("GUIDEWAY") @Order(11) @Range(-50, 50)
+attr Train_Position_1 = 0
+
+@Group ("GUIDEWAY") @Order(12)
+attr Train_On_Track_2 = false
+
+@Group ("GUIDEWAY") @Order(13) @Range(-50, 50)
+attr Train_Position_2 = 3.1416 #;)
+
+@Group ("GUIDEWAY") @Order(20)
+attr Track_Material	= "3D_City_Design_Assets/Material_Library/Groundcover/Stones Small Light.jpg"
+
+@Group ("GUIDEWAY") @Order(21)
+attr Spacer_Material = "3D_City_Design_Assets/Material_Library/BlocksPavers/Cement Block Square Grey Stack Bond 45.jpg"
+
+
+@Hidden
+attr isCrossing = false
+
+const Ramp_Length = 0.3
+const baseThickness = 0.1
+
+
+Sidewalk -->
+	NIL
+
+
+@Group("CROSSING",2) @Range(0,360)
+attr CrossingRotation = 0
+
+@StartRule
+GuidewayCrossing -->
+	set(isCrossing, true)
+	tileUV(0,geometry.du(0,unitSpace),geometry.dv(0,unitSpace))
+	rotateUV(0, CrossingRotation)
+	Guideway
+
+
+@StartRule
+Guideway -->
+	case thematicsOn:
+		color(thematicColor)
+		GuidewayStep2
+	case !texturingOn: 
+		color("#FFFFFF")		
+		GuidewayStep2
+	else:
+		GuidewayStep2
+		
+GuidewayStep2 -->
+	set(material.opacity,Transparency)
+	GuidewayUnderlay
+	alignScopeToAxes(y)
+	split(v,unitSpace,0) {'0.5 : scaleUV(0,1,-1) Side(1) | '0.5 : scaleUV(0,-1,1) Side(2)}  
+		
+GuidewayUnderlay -->
+	case texturingOn:
+		tileUV(0,3,3)
+		projectUV(0)
+		texture(concrete_tex)
+	else: X.
+
+Side(direction) -->
+	extrude(world.y, baseThickness)
+	comp(f){top:
+		split(v,unitSpace,0) { Track_Dist / 2 : TrackBed 
+			| Track_Dist : Track(direction) 
+			| ~1 : TrackBed
+			| (case isCrossing: Ramp_Length else: 0) : CrossingRamp}}
+
+		
+CrossingRamp -->
+	# There should be a ramp here, onto the raised bed, but had some problems with the Crossing geometry, so omitting for now.
+	NIL
+	#extrude(1)
+	#comp(f) {top:
+	#t(0,0,-1)
+	#innerRect
+	#roofShed(30,2)
+	#s('1,baseThickness,'1)
+	#tileUV(0,3,3)
+	#projectUV(0)
+	#texture(concrete_tex) X.} 
+
+concrete_tex = "3D_City_Design_Assets/Street_Construction/textures/asphalt2.jpg"
+
+
+TrackBed -->
+	case texturingOn:
+		setupProjection(0,scope.xy,5,5)
+		projectUV(0)
+		texture(Spacer_Material)	
+	else: X.
+
+Track(whichTrain) -->
+	TrackBottom(whichTrain)
+	split(v,unitSpace,0) { ~1 : NIL | Rail_Dist : RailBand | ~1 : NIL }
+
+RailBand -->
+	split(v,unitSpace,0) { ~.05 : Rail | ~1 : NIL | ~.05 : Rail }
+
+Rail -->
+	extrude (world.y, Rail_Height)
+	RailTexture
+
+RailTexture -->
+	case texturingOn:
+		color(.2,.2,.2)
+	else: X.
+
+const Rail_Height = 0.14
+
+TrackBottom(whichTrain) -->
+	alignScopeToGeometry(yUp,0,0)
+	TrackBottomTexture
+	Train(whichTrain)
+
+TrackBottomTexture -->
+	case texturingOn:
+		setupProjection(0, scope.xz, 5, 5)
+		projectUV(0)
+		texture(Track_Material)
+	else: X.
+	
+	
+
+insertTrainHere = comp.index == floor(comp.total / 2)
+
+Train(whichTrain) -->
+	case showTrain(whichTrain) && insertTrainHere:
+		s(0,0,0) 
+		center(xy)
+		t(trainMoveAmount(whichTrain), Rail_Height, (Track_Dist/2)+0.05)
+		r(scopeCenter,0,rotation(whichTrain),0)
+		i("3D_City_Design_Assets/Vehicles_by_lowpolygon3d_com/train.obj")
+	 	TextureSwitch
+	else:
+		NIL
+		
+
+rotation(whichTrain) = 
+	case whichTrain == 1: 90
+	else: -90
+
+showTrain(whichTrain) = 
+	case whichTrain == 1: Train_On_Track_1
+	else: Train_On_Track_2 
+
+trainMoveAmount(whichTrain) = 
+	case whichTrain == 1: Train_Position_1
+	else: Train_Position_2 

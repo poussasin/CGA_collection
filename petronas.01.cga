@@ -1,0 +1,473 @@
+/*
+ * File:    petronas.01.cga
+ * Created: 9 Sep 2008 12:09:15 GMT
+ * Author:  Andreas Ulmer
+ */
+ 
+version "2014.0"
+ 
+// Assets 
+ 
+const sphere = "sphere.obj"
+const cyl = "cylinder.vert.16.obj"
+const cyl_half = "cylinder.vert.16.half.obj"
+const cyl_h = "cylinder.hor.8.notop.tex.obj"
+
+const border_tex = "textures/white_bordered.png"
+const tileset_tex = "textures/petronas_8x8tiles_512x256.png"
+const tilesetmask_tex = "textures/petronas_8x8tiles_512x256_mask2.png"
+const singletile_tex = "textures/petronas_singletile.png"
+const singletilemask_tex = "textures/petronas_singletile_mask.png"
+
+// Attributes
+
+@Group("Main",0) @Range(10,100)
+attr tower_width = 50
+@Group("Main",0) @Range(1,10)
+attr floorheight = 4
+@Group("Main",0) @Range(1,1000)
+attr height = 402 // without antenna
+@Group("Main",0) @Range(0,3)
+attr LOD = 0
+@Group("Main",0) @Range(1,10)
+attr towers = 2
+
+
+
+@Group("Parametric",1) @Range(2,24)
+attr recCount = 8
+@Group("Parametric",1) @Range(0,15)
+attr setbackRot = 0 // add avosulte rotation to setbacks
+@Group("Parametric",1) @Range(0,10)
+attr setbackSize = 5 // absolute radial setback size
+@Group("Parametric",1) @Range(0,1) 
+attr setbackRatio = 0.8 // relative height of next setback 
+
+@Group("Details",2) @Range(0,1)
+attr cylSize = 1 // relative value	
+@Group("Details") @Range(0,0.5)
+attr vtubeSize = 0.05 // relative value
+
+
+@Group("Testing",3)
+attr singleElement = false
+@Group("Testing")
+attr setbacks = true
+@Group("Testing")
+attr oververt = true
+@Group("Testing") @Range(0,24)
+attr recStop = 0
+@Group("Testing")
+attr coloredOcclusion = false
+
+
+// Functions
+//elements
+const vtubes = true
+const htubes = true
+
+// Bridge params
+const bridge_width = 5.29
+const bridge_height = 8
+const tower_dist = 110
+
+const tile_width = 1.6
+
+
+
+alpha = (360/recCount)/2
+
+segmentw = (sin(alpha)/(cos(alpha)+sin(alpha)))
+
+actualFloorHeight = 
+	case scope.sy >= floorheight : scope.sy/rint(scope.sy/floorheight)
+	else : floorheight
+	
+actualTileWidth = 
+	case scope.sx >= tile_width : scope.sx/rint(scope.sx/tile_width)
+	else : scope.sx
+
+
+/*************************
+Starter
+*************************/
+@StartRule
+Lot --> 
+	// init, reset pivot and scope values
+	set(pivot.ox,0) set(pivot.oy,0) set(pivot.oz,0) 
+	set(pivot.px,0) set(pivot.py,0) set(pivot.pz,0) 
+	set(scope.tx,0) set(scope.ty,0) set(scope.tz,0)
+	set(scope.sx,0) set(scope.sy,0) set(scope.sz,0)
+	
+	set(trim.vertical, false)  
+	set(trim.horizontal, false)
+	Towers
+
+// create main elements, towers and bridge
+Towers -->		
+	Tower
+	RecTowers(towers-1)
+
+RecTowers(ind)	-->
+	 case ind > 0 :
+		Bridge
+		t(tower_dist,0,0) r(scopeCenter,0,alpha,0) Tower RecTowers(ind-1)
+	else : NIL	
+
+
+
+
+
+
+
+/*************************
+Mass Modeling
+*************************/
+
+
+
+// Defines the base mass of the Tower
+Tower -->
+	s(tower_width,height,tower_width) center(xz)  
+	r(scopeCenter,0,45+(360/recCount/2),0)
+	i("builtin:cube") Setbacks
+
+// Create recursive setback masses in y-axis
+Setbacks -->
+	case setbacks : split(y){~1 : RecMass(0) | ~setbackRatio : Setback }
+	else:  RecMass(0)
+
+Setback --> r(scopeCenter, 0,setbackRot,0) Setback2
+
+
+Setback2 --> 
+	case scope.sx < setbackSize+1 : Antenna
+	case scope.sy > 30 : s(scope.sx-setbackSize, '1, scope.sz-setbackSize) center(xz) split(y){~1 : RecMass(0) | ~2 : Setback} 
+	case scope.sy > 7 :	s(scope.sx-setbackSize, '1, scope.sz-setbackSize) center(xz) split(y){6 : RecMass(0) | ~1 : Setback} 
+	else : s(scope.sx-setbackSize, '1, scope.sz-setbackSize) center(xz) Antenna
+
+// create over-vertical floors of each setback
+RecMass(index) -->
+  case oververt :
+  	case scope.sy > 3*floorheight : 
+		split(y){ ~1 : RotMassRec(index, "n") | 
+				 floorheight : s('1.01,'1,'1.01) center(xz) RotMassRec(index, "b") |
+				 floorheight :  s('1.03,'1,'1.03) center(xz) RotMassRec(index, "bt") |
+				 floorheight/4 : s('0.99,'1,'0.99) center(xz) RotMassRec(index, "t") 
+				}
+	
+	case scope.sy > 2*floorheight : 
+		split(y){ ~1 : RotMassRec(index, "n") | 
+				  floorheight :  s('1.03,'1,'1.03) center(xz) RotMassRec(index, "bt") |
+				  floorheight/4 : s('0.99,'1,'0.99) center(xz) RotMassRec(index, "t") 
+				}
+	
+	else : 
+		split(y){ ~1 : RotMassRec(index, "t") | 
+				  floorheight/4 : s('0.96,'1,'0.96) center(xz) RotMassRec(index, "t") 
+				}
+	
+  else :
+	RotMassRec(index,"t")
+
+
+
+
+/*************************
+Recursive Mass Modeling
+*************************/
+// recursively create the rotated facade masses
+
+RotMassRec(cnt, roofmode) -->
+	case cnt > 0 && singleElement : NIL
+	case cnt < recCount && ( cnt < recStop || recStop == 0): 
+		r(scopeCenter,0,360/recCount,0) RotMass(roofmode) RotMassRec(cnt+1, roofmode)
+	else : NIL
+	
+
+RotMass(roofmode) -->
+	split(x){~1 : NIL | scope.sx*segmentw*2 : split(z){~1 : NIL | scope.sz*segmentw*2 : RotMass2(roofmode)} }
+
+RotMass2(roofmode) -->
+	Occluder // prepare occluder mass required to occlude facade parts of upcoming cylindrical mass
+	Horizontals(roofmode)
+	split(x){~1 : NIL | '0.5 : split(z){~1 : NIL | '0.5 : RotMass3(roofmode)} }
+
+	
+RotMass3(roofmode) -->	
+	CubePartMass
+	CylPartMass(roofmode)
+
+
+/*************************
+Cubical Mass Part
+*************************/
+	
+CubePartMass -->	
+	set(trim.vertical, true)  	
+	comp(f){front : CubePartFace | right : CubePartFace}
+
+
+vtubep = 
+	case LOD > 0 : vtubeSize
+	else : 0	
+
+CubePartFace -->
+	case comp.sel == "right" : split(x){~1 : Facade | ~vtubep : VTubes | ~cylSize : NIL}
+	case comp.sel == "front" : split(x){~cylSize : NIL | ~vtubep : t('-1,0,0)  VTubes | ~1 : Facade  }
+	else : NIL
+
+
+
+
+/*************************
+Cylindrical Mass Part
+*************************/
+
+CylPartMass(roofmode) -->
+	comp(f){right : split(x){~1 : NIL | ~vtubep : NIL | ~cylSize : CylPartMass2(roofmode)} }
+	
+	
+	
+CylPartMass2(roofmode) --> 
+	s(scope.sx*2,'1,scope.sx*2) center(z) r(scopeCenter,0,225+(360/recCount/2),0)
+	set(trim.vertical, false)  i("builtin:cube")   
+	CylArea(roofmode)
+	
+	
+CylArea(roofmode) -->
+	split(x){~1 : NIL | ~1 : i(cyl_half) set(trim.vertical, true) CylFaces(roofmode)}	
+
+
+
+CylFaces(roofmode) --> 
+	case roofmode == "b" :
+		comp(f){side : CheckOccluded("facade")  | bottom : CheckOccluded("roof") }
+	case roofmode == "bt" :
+		comp(f){side : CheckOccluded("facade")  | top : CheckOccluded("roof") | bottom : CheckOccluded("roof") }
+	case roofmode == "t" :
+		comp(f){side : CheckOccluded("facade")  | top : CheckOccluded("roof") }
+	else :
+		comp(f){side : CheckOccluded("facade") }
+
+
+
+
+/***************************
+Occlusion Checks
+****************************/
+
+Occluder -->
+	s(scope.sx+0.01, scope.sy+0.01, scope.sz+0.01) center(xyz)
+	comp(f){all : NIL}
+
+
+CheckOccluded(type) -->
+	case inside(intra) :
+		color("#ff0000") VizOcclusion report("Occlusioncheck.dropped", 1)
+	else : 
+		case type =="facade" : Facade report("Occlusioncheck.passed", 1)
+		else : Roof report("Occlusioncheck.passed", 1)
+		
+
+
+
+
+VizOcclusion -->
+	case coloredOcclusion : X.
+	else : NIL
+
+
+
+/***************************
+Floor Planes
+****************************/
+
+Horizontals(roofmode) -->
+	case roofmode == "b" :
+		GetFloorFaces
+	case roofmode == "bt" :
+		GetFloorFaces GetRoofFaces
+	case roofmode == "t" :
+		GetRoofFaces
+	else : NIL	
+		
+		
+		
+GetRoofFaces -->		
+	comp(f){top :  Roof}
+	
+GetFloorFaces -->
+	comp(f){bottom :  Bottom}
+
+
+
+/***************************
+Facade
+****************************/
+
+Facade -->
+	case scope.sy < 2 : Metal
+	case LOD > 1 : split(y){~floorheight : HTubes}* LoresTile
+	else : LoresTile
+
+
+LoresTile -->	
+	setupProjection(0, scope.xy, actualTileWidth*8, actualFloorHeight*8) 
+	texture(tileset_tex) 
+	set(material.colormap.tu, ceil(rand(0,8))*0.125)
+ 	set(material.colormap.tv, ceil(rand(0,8))*0.125)
+ 	set(material.specularmap,tilesetmask_tex)
+	set(material.bumpmap,tilesetmask_tex)
+	
+ 	projectUV(0) Glass
+
+
+
+/***************************
+Tubes
+****************************/
+
+// Vertical tubes (between facade parts)
+VTubes --> 
+	case vtubes: center(x) s(scope.sx*2,'1,scope.sx*2) center(z) i(cyl) VTubesFaces
+	else : NIL
+		
+VTubesFaces -->		
+		case comp.sel =="front" : comp(f){right : Metal | front : Metal | top : Metal }
+		else : comp(f){front : Metal | left : Metal | top : Metal }
+
+// Horizontal tubes (on windows)
+HTubes --> 
+	case htubes : split(y){'0.4 : LowerTube | '0.1 : MidTube | ~1 : UpperTube}
+	else : NIL
+	
+HTube(diam) -->
+	s('1.5,diam,diam) center(x) i(cyl_h) Metal
+	
+	
+LowerTube -->
+	[ t(0,0,0) HTube(0.5) ]
+
+MidTube -->
+	case LOD > 2 :
+	[ t(0,-0.1,0.0) HTube(0.2) ]
+	[ t(0,scope.sy-0.1,0.0) HTube(0.2) ]
+	else : NIL
+UpperTube -->
+	[ t(0,scope.sy-0.5,0.0) HTube(0.4) ]
+	
+
+
+
+/*************************
+Additional Elements
+*************************/
+
+Antenna --> 
+	s('1,height/8,'1)
+	[ s(1,'1,1) center(xz) i(cyl) Metal ]
+	[ s(tower_width/5,0,0) t(0,tower_width/10,0) center(xz) i(sphere) Metal ]
+	[ t(0,'1,0) s(2,0,0) center(xz) i(sphere) Metal ]
+
+
+Roof -->
+color("#cccccc") Metal
+Bottom -->
+color("#999999") Metal
+
+
+/*************************
+Materials
+**************************/
+
+
+Metal -->
+	set(material.shininess, 5)
+	set(material.specular.r,0.7)
+	set(material.specular.g, 0.7)
+	set(material.specular.b, 0.7)
+	set(material.reflectivity,0.1)
+	texture("textures/white64x64.png")
+	color(.95,.95,1)
+
+Glass -->
+	set(material.shininess, 5)
+	set(material.specular.r,0.7)
+	set(material.specular.g, 0.7)
+	set(material.specular.b, 0.7)
+	set(material.reflectivity,0.35)
+	set(material.bumpValue,0.1)
+
+WhiteBordered -->
+	setupUV(0,scope.sx, scope.sy, 1) texture(border_tex) projectUV(0)
+
+BlueBordered -->
+	setupUV(0,scope.sx, scope.sy, 1) color("#6666ff") texture(border_tex) projectUV(0)
+
+/****************************
+Bridge
+*****************************/
+
+
+// place bridge, setup area
+Bridge --> 
+	t(sqrt(2)*tower_width/2,0,0) 
+	s(tower_dist-sqrt(2)*tower_width,height,0.01) 
+	i("builtin:cube")  
+	split(y){~1 : BridgeArea | ~setbackRatio : NIL }
+
+
+
+BridgeArea -->
+	s('1,scope.sy-2*floorheight,1)
+	t(0,'0.75,0) 
+	s(scope.sx+8,bridge_height,bridge_width) center(xz) i("builtin:cube") 
+	BridgeSub
+	
+BridgeSub -->
+	case LOD > 0:
+	 split(x){~1 : BridgeSide | 4 : BridgeCenter | ~1 : BridgeSide}
+	else : BridgeSide
+	 
+BridgeSide -->  comp(f){front : Bridgeface HTubeB | back : Bridgeface HTubeB| horizontal : Metal}
+	  
+	  
+BridgeCenter -->
+	case LOD > 0 && height > 150 :
+		s('1,scope.sy+2.5, scope.sy+0.5) center(z) t(0,-2,0)
+		comp(f){top : WhiteBordered | front : CenterFace | back : CenterFace | side : CenterFace } 
+		comp(f){bottom : roof("gable",32) BridgeSupport} 
+	else : NIL	 
+
+CenterFace -->
+	split(y){~1 : WhiteBordered | 8 : Bridgeface | 0.5 : WhiteBordered}
+
+supportDiam = 1
+
+BridgeSupport -->
+	comp(f){all : WhiteBordered} 
+	comp(f){top : split(x){supportDiam : r(0,2,0) SupportBar | ~1 : NIL | supportDiam : r(0,-2,0) SupportBar} }
+
+SupportBar --> 
+	s(scope.sx, scope.sx,65) center(y) i("builtin:cube") setPivot(yzx,0)  i(cyl_h) SubSupportBar
+
+	
+SubSupportBar -->
+	case LOD > 1 : split(x){~11 : split(x){0.3 : s('1.2,'1,'1.2) center(xz) Metal | ~1 : Metal} }*
+	else : Metal
+
+
+
+Bridgeface -->
+	setupUV(0, actualTileWidth*2, scope.sy,1) 
+	texture(singletile_tex) 
+	set(material.specularmap,singletilemask_tex)
+	set(material.bumpmap,singletilemask_tex)
+	projectUV(0) Glass
+	
+HTubeB -->
+	case LOD > 0 :
+		[ t(0,2.6,0) HTube(0.3) ]
+		[ t(0,scope.sy - 0.5,0) HTube(0.5) ]
+	else : NIL

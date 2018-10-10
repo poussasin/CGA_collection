@@ -1,0 +1,197 @@
+/**
+ *
+ Authors:
+ Matthias Buehler, Esri R&D Center Zurich
+ Seiler & Seiler, http://seilerseiler.com
+ */
+
+version "2014.1"
+
+import SHAPE_BASED_BUILDING : "rules/SHAPE_BASED_BUILDING.cga"
+
+############################################################
+# ATTRIBUTES
+############################################################
+
+@Group ("SHAPE_BASED_BUILDING", 0)			@Order(0)
+attr mainLength						= 15
+@Group ("SHAPE_BASED_BUILDING")				@Order(1)
+attr mainDepth						= 15
+@Group ("SHAPE_BASED_BUILDING")				@Order(2)			@Range("Rectangle", "ShapeL", "ShapeO", "ShapeU")
+attr footprintForm					= "Rectangle"
+@Group ("SHAPE_BASED_BUILDING")				@Order(3)
+attr footprintMirrorWidth			= false
+@Group ("SHAPE_BASED_BUILDING")				@Order(4)
+attr footprintMirrorDepth			= false
+@Group ("SHAPE_BASED_BUILDING")				@Order(5)
+attr frontWingDepth					= 14
+@Group ("SHAPE_BASED_BUILDING")				@Order(6)
+attr backWingDepth					= 12
+@Group ("SHAPE_BASED_BUILDING")				@Order(7)
+attr sideWingDepth					= 14
+@Group ("SHAPE_BASED_BUILDING")				@Order(8)
+attr buildingRotation				= 360
+
+@Group ("GRID", 1)					@Order(0)
+attr gridWidth						= 1
+@Group ("GRID")						@Order(1)
+attr gridDepth						= 1
+@Group ("GRID")						@Order(2)
+attr gridDistWidth					= 20
+@Group ("GRID")						@Order(3)
+attr gridDistDepth					= 15
+
+############################################################
+# START SHAPES
+############################################################
+
+
+@StartRule
+Building_Marker -->
+	alignScopeToAxes(y)
+	s(mainLength, 0, mainDepth)
+	center(xz)
+	primitiveCube()
+		comp(f) {bottom: alignScopeToAxes(y) reverseNormals CreateGrid | all : NIL
+	}
+
+CreateGrid -->
+	s(gridWidth * scope.sx + (gridWidth - 1) * gridDistWidth, 0, gridDepth * scope.sz + (gridDepth - 1) * gridDistDepth)
+	center(xz)
+	GridSplitX
+
+GridSplitX -->
+	split(x) {{mainLength : GridSplitZ | ~gridDistWidth : NIL}* | mainLength : GridSplitZ } 
+
+GridSplitZ -->
+	split(z) {{mainDepth : FootprintBase | ~gridDistDepth : NIL}* | mainDepth : FootprintBase } 
+
+FootprintBase -->
+	r(scopeCenter, 0, buildingRotation, 0)
+	FootprintForm
+
+FootprintForm -->
+	case footprintForm == "Rectangle":
+		mirrorScope(footprintMirrorWidth, false, footprintMirrorDepth)
+		SHAPE_BASED_BUILDING.Footprint
+	case footprintForm == "ShapeL":
+		mirrorScope(footprintMirrorWidth, false, footprintMirrorDepth)
+		shapeL(frontWingDepth,sideWingDepth) { shape : SHAPE_BASED_BUILDING.Footprint | remainder : NIL}
+	case footprintForm == "ShapeO":
+		mirrorScope(footprintMirrorWidth, false, footprintMirrorDepth)
+		shapeO(frontWingDepth,sideWingDepth,backWingDepth,sideWingDepth) { shape : SHAPE_BASED_BUILDING.Footprint | remainder : NIL}
+	case footprintForm == "ShapeU":
+		mirrorScope(footprintMirrorWidth, false, footprintMirrorDepth)
+		shapeU(frontWingDepth,sideWingDepth,sideWingDepth) { shape : SHAPE_BASED_BUILDING.Footprint | remainder : NIL}
+	else :
+		mirrorScope(footprintMirrorWidth, false, footprintMirrorDepth)
+		SHAPE_BASED_BUILDING.Footprint
+
+
+
+
+
+
+style Residential_Single
+attr mainLength 		= 13.0
+attr mainDepth 			= 13.0
+attr gridDistWidth		= 18
+attr gridDistDepth		= 18
+
+style Residential_Double
+attr mainLength 		= 24.0
+attr mainDepth 			= 12.0
+attr gridDistWidth		= 25
+attr gridDistDepth		= 20
+
+style Residential_Multi
+attr mainLength 		= 36.0
+attr mainDepth 			= 13.0
+attr gridDistWidth		= 25
+attr gridDistDepth		= 20
+
+style Educational_Kindergarden
+attr mainLength 		= 20
+attr mainDepth 			= 16
+attr gridDistWidth		= 15
+attr gridDistDepth		= 15
+
+style Educational_Storage
+attr mainLength 		= 5.0
+attr mainDepth 			= 8.0
+attr gridDistWidth		= 10
+attr gridDistDepth		= 10
+
+style Educational_School
+attr mainLength 		= 36.0
+attr mainDepth 			= 36.0
+attr footprintForm 		= "ShapeO"
+attr frontWingDepth 	= 10.0
+attr backWingDepth 		= 10.0
+attr sideWingDepth 		= 15.0
+attr gridDistWidth		= 30
+attr gridDistDepth		= 30
+
+style Educational_Sports
+attr mainLength 		= 45
+attr mainDepth 			= 27
+attr gridDistWidth		= 30
+attr gridDistDepth		= 20
+
+style Mercantile_Mall
+attr mainLength 		= 40.0
+attr mainDepth 			= 30.0
+attr gridDistWidth		= 30
+attr gridDistDepth		= 20
+
+style Mercantile_L
+attr mainLength 		= 45.0
+attr mainDepth 			= 30.0
+attr footprintForm 		= "ShapeL"
+attr frontWingDepth 	= 15.0
+attr sideWingDepth 		= 15.0
+attr gridDistWidth		= 25
+attr gridDistDepth		= 25
+
+style Mercantile_U
+attr mainLength 		= 50.0
+attr mainDepth 			= 25.0
+attr footprintForm 		= "ShapeU"
+attr frontWingDepth 	= 12.5
+attr backWingDepth 		= 12.5
+attr sideWingDepth 		= 12.5
+attr gridDistWidth		= 25
+attr gridDistDepth		= 25
+
+style Industrial_Hangar
+attr mainLength 		= 60.0
+attr mainDepth 			= 25.0
+attr gridDistWidth		= 15
+attr gridDistDepth		= 15
+
+style Industrial_Office
+attr mainLength 		= 16.0
+attr mainDepth 			= 12.0
+attr gridDistWidth		= 10
+attr gridDistDepth		= 10
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

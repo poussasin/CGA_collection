@@ -1,0 +1,44 @@
+/**
+ * File:    orchard_static.cga
+ * Created: 1 Mar 2017 15:34:27 GMT
+ * Author:  Esri R&D Center Zurich
+ */
+
+version "2017.0"
+
+
+@Hidden
+import orchard:"rules/orchard.cga"
+
+
+// ******************************
+// Start Rule
+// ******************************
+
+Lot -->
+	t(0, orchard.elevation, 0)
+	split(x) { ~1: SplitZ(split.index)
+			 | ~1: SplitZ(split.index)
+			 | ~1: SplitZ(split.index) 
+			 | ~1: SplitZ(split.index) }
+	
+			 
+// ******************************
+// Rules
+// ******************************
+
+SplitZ(col_ind) -->
+	split(z) { ~1: Tree(split.index, col_ind)
+			 | ~1: Tree(split.index, col_ind)
+			 | ~1: Tree(split.index, col_ind) 
+			 | ~1: Tree(split.index, col_ind) }
+
+Tree(row_ind, col_ind) -->
+	case orchard.isStatic(row_ind, col_ind):
+		StaticTree(row_ind, col_ind)
+	else:
+		NIL
+
+StaticTree(row_ind, col_ind) -->
+	orchard.Oranges(orchard.getAnswer(row_ind, col_ind), orchard.staticOrange_color)
+	orchard.Tree(orchard.staticOrange_color)

@@ -1,0 +1,125 @@
+/**
+ * File:    puzzle.cga
+ * Created: 23 Feb 2017 13:46:11 GMT
+ * Author:  Esri R&D Center Zurich
+ */
+
+version "2017.0"
+
+
+// ******************************
+// Attributes
+// ******************************
+
+@Order(1)
+@Handle(shape=MovedPiece^2, axis=x, type=move, translate={0.5,1,0.5}, skin=sphere, color="#e99139", repeat=none, occlusion=false)
+@Range(-40, 40)
+attr offset_x = 0
+
+@Order(2)
+@Handle(shape=MovedPiece^2, axis=z, type=move, translate={0.5,1,0.5}, skin=sphere, color="#e99139", repeat=none, occlusion=false)
+@Range(-40, 40)
+attr offset_z = 0
+
+
+// ******************************
+// Variables and Functions
+// ******************************
+
+const border_thickness = 0.5
+const border_color = "#333333"
+
+const grid_size = 4
+const piece_width = scope.sx/grid_size
+const floor_height = 4
+const base_height = 2*floor_height
+
+const top_tex = "Textures/officeBuildings.png" //"builtin:uvtest.png"
+const top_tex_width = scope.sx
+const top_tex_height = top_tex_width*imageInfo(top_tex, sy)/imageInfo(top_tex, sx)
+
+const list_real_x = "1;0;0;3;2;1;3;0;2;1;2;2;1;3;3;0;"
+const list_real_z = "1;2;0;3;1;2;0;1;0;0;3;2;3;1;2;3;"
+
+getReal_x(row, col) = float(listItem(list_real_x, row*grid_size + col))
+getReal_z(row, col) = float(listItem(list_real_z, row*grid_size + col))
+
+isCorrect(row, col) =
+	case getCurrRow(row) == getReal_z(row, col)
+		 && getCurrCol(col) == getReal_x(row, col):
+		true
+	else:
+		false
+		
+getCurrRow(row) = row + rint(offset_z/piece_width)
+getCurrCol(col) = col + rint(offset_x/piece_width)
+
+
+// ******************************
+// Start Rule
+// ******************************
+
+Lot -->
+	Border
+	split(x) { ~piece_width: SplitZ(split.index) }*
+	CreateOccluderTest
+	report("ProgressTotal", 1)
+	
+	
+// ******************************
+// Puzzle
+// ******************************
+
+Border -->
+	offset(border_thickness, border)
+	reverseNormals
+	extrude(border_thickness)
+	color(border_color)
+
+	
+SplitZ(col_ind) -->
+	split(z) { ~piece_width: Piece(split.index, col_ind) }*
+	
+Piece(row_ind, col_ind) -->
+	t(rint(offset_x/piece_width)*piece_width, 0, rint(offset_z/piece_width)*piece_width)
+	extrude(base_height + floor_height*(grid_size-row_ind-1) + floor_height*(grid_size-col_ind-1))
+	MovedPiece(row_ind, col_ind)
+	
+MovedPiece(row_ind, col_ind) -->
+	comp(f) { top: TextureTop(row_ind, col_ind) | all: Sides. }
+	TestPiece(row_ind, col_ind)
+	
+TextureTop(row_ind, col_ind) -->
+	setupProjection(0, scope.xy, top_tex_width, top_tex_height, -piece_width*getReal_x(row_ind, col_ind), -piece_width*(grid_size-getReal_z(row_ind, col_ind)-1))
+	texture(top_tex)
+	projectUV(0)
+	
+	
+// ******************************
+// Check Answer
+// ******************************
+
+CreateOccluderTest -->
+	s(scope.sx + 80, 0, scope.sz + 80)
+	center(xz)
+	extrude(base_height)
+	TestCorrect
+
+TestCorrect -->
+	case touches(intra, "Check"):
+		NIL
+	else:
+		report("Progress", 1)
+		report("Code.Puzzle", 6)
+		NIL
+	
+TestPiece(row_ind, col_ind) -->
+	case isCorrect(row_ind, col_ind):
+		t(0, base_height + 1, 0)
+		label("Check")
+		NIL
+	else:
+		label("Check")
+		NIL
+		
+		

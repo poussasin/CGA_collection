@@ -1,0 +1,577 @@
+/**
+ * Created: 2014-02-19
+ * Modified: 2014-03-21 
+ * Author: Esri
+ */
+
+version "2015.0"
+   
+
+import USAGE_PROFILE: "Referenced/Zoning_Usage_Typology.cga"
+ 
+@Hidden
+import TemplateSearch: "Referenced/TemplateSearch.cga"
+
+@Hidden
+import Building: "Referenced/BuildingForParcelImport.cga" 
+
+@Hidden
+attr Typology = USAGE_PROFILE.getDefaultTypologyPerZone(Zoning)
+@Hidden
+attr ImportedFrom = "Parcel" 
+
+
+@Hidden
+import Plant_Distributor_with_LumenRT_Models:"/ESRI.lib/rules/Plants/Plant_Distributor.cga"
+ 
+const assetDirectory = "Zoning_and_Land_Use/"
+
+
+##########################################
+   
+@Group("DISPLAY", 10) @Order(11)
+attr Show_Envelope = true
+
+@Group("DISPLAY") @Order(12) 
+#@Range("None")
+attr Show_Buildings = true 
+
+#@Group("DISPLAY") @Order(13)
+#attr Show_Textures = false 
+
+@Group("DISPLAY") @Order(14)
+attr Show_Usage = false 
+
+
+
+##########################################
+# ZONING
+
+@Group("ZONING", 20) @Order(10)
+@Range("BUSINESS INDUSTRY","BUSINESS PARK - WHITE","CEMETERY","CIVIC & COMMUNITY INSTITUTION","COMMERCIAL","COMMERCIAL & RESIDENTIAL","EDUCATIONAL INSTITUTION","HEALTH & MEDICAL CARE","HOTEL","LIGHT RAPID TRANSIT","MASS RAPID TRANSIT","OPEN SPACE","PARK","PARKING - MCSP","PLACE OF WORSHIP","PORT / AIRPORT","LANDED HOUSING","RESIDENTIAL, LOW","RESIDENTIAL, MEDIUM","RESIDENTIAL, MEDIUM HIGH","RESIDENTIAL, HIGH","RESIDENTIAL, VERY HIGH","RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, LOW","RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, MEDIUM","RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, MEDIUM HIGH","RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, HIGH","RESIDENTIAL WITH COMMERCIAL AT 1ST STOREY, VERY HIGH","ROAD","SPECIAL USE","SPORTS & RECREATION","TRANSPORT FACILITIES","UTILITY","WHITE")
+attr Zoning = "RESIDENTIAL, LOW" 
+
+@Group("ZONING") @Order(20)
+attr PARCEL_ID = ""
+
+##########################################
+# DENSITY & SETBACKS
+
+
+@Group("DENSITY & SETBACKS",30) @Order(3)
+@Range(0.1, 10) 
+attr Gross_Plot_Ratio = USAGE_PROFILE.getZoningData_GPR(Zoning)
+
+@Group("DENSITY & SETBACKS") @Order(4)
+@Range(0.01, 1)
+attr Coverage = USAGE_PROFILE.getZoningData_Coverage(Zoning)
+
+@Group("DENSITY & SETBACKS") @Order(5)
+@Range(0, 800)
+attr Max_Stories = USAGE_PROFILE.getZoningData_MaxStories(Zoning)
+
+@Group("DENSITY & SETBACKS") @Order(6)
+@Range(0, 800)
+attr Height_Max = TEMP_MAX_HEIGHT #XX Huh?
+# XX huh?
+TEMP_MAX_HEIGHT = rint(Max_Stories * TEMP_AVERAGE_FLOOR_HEIGHT) + 10	
+TEMP_AVERAGE_FLOOR_HEIGHT = 3.5
+
+@Group("DENSITY & SETBACKS") @Order(7)
+@Range(0, 50) 
+attr Height_CAAS = 300
+
+@Group("DENSITY & SETBACKS") @Order(8)
+@Range(0, 50) 
+attr Height_Tech = 300
+
+@Group("DENSITY & SETBACKS") @Order(10)
+@Range("Common", "Cat1", "Cat2", "Cat3", "Cat4", "Cat5", "CatN")
+attr Front_Category = "Common"
+
+@Group("DENSITY & SETBACKS") @Order(11)
+@Range(0, 20)
+attr Front_Setback = USAGE_PROFILE.getZoningData_SBCat_Any(Zoning, Front_Category )
+
+@Group("DENSITY & SETBACKS") @Order(12)
+@Range(0, 20)
+attr Front_Green_Buffer = USAGE_PROFILE.getZoningData_GBCat_Any(Zoning, Front_Category )
+
+@Group("DENSITY & SETBACKS") @Order(20)
+@Range("Common", "Cat1", "Cat2", "Cat3", "Cat4", "Cat5", "CatN")
+attr Left_Category = "Common"
+
+@Group("DENSITY & SETBACKS") @Order(21)
+@Range(0, 20)
+attr Left_Setback = USAGE_PROFILE.getZoningData_SBCat_Any(Zoning, Left_Category )
+
+@Group("DENSITY & SETBACKS") @Order(22)
+@Range(0, 20)
+attr Left_Green_Buffer = USAGE_PROFILE.getZoningData_GBCat_Any(Zoning, Left_Category )
+
+@Group("DENSITY & SETBACKS") @Order(30)
+@Range("Common", "Cat1", "Cat2", "Cat3", "Cat4", "Cat5", "CatN")
+attr Right_Category = "Common"
+
+@Group("DENSITY & SETBACKS") @Order(31)
+@Range(0, 20)
+attr Right_Setback = USAGE_PROFILE.getZoningData_SBCat_Any(Zoning, Right_Category )
+
+@Group("DENSITY & SETBACKS") @Order(32)
+@Range(0, 20)
+attr Right_Green_Buffer = USAGE_PROFILE.getZoningData_GBCat_Any(Zoning, Right_Category )
+
+@Group("DENSITY & SETBACKS") @Order(40)
+@Range("Common", "Cat1", "Cat2", "Cat3", "Cat4", "Cat5", "CatN")
+attr Rear_Category = "Common"
+
+@Group("DENSITY & SETBACKS") @Order(41)
+@Range(0, 20)
+attr Rear_Setback = USAGE_PROFILE.getZoningData_SBCat_Any(Zoning, Rear_Category )
+
+@Group("DENSITY & SETBACKS") @Order(42)
+@Range(0, 20)
+attr Rear_Green_Buffer = USAGE_PROFILE.getZoningData_GBCat_Any(Zoning, Rear_Category )
+
+#@Group("DENSITY & SETBACKS") @Order(50)
+#@Range(3, 6)
+#attr Ring_Road = 6
+
+@Group("DENSITY & SETBACKS") @Order(50)
+@Range(0, 10)
+attr Lot_Buffer = USAGE_PROFILE.getZoningData_CommonBoundaryBuffer(Zoning)
+
+@Group("DENSITY & SETBACKS") @Order(60)
+@Range("Pavers", "Grass")
+attr Lot_Boundary_Treatment = "Pavers"
+
+####################################
+@Group("PARCELIZATION",50)
+@Order(0)
+@Range(-360,360)
+attr Rotation = 0
+
+@Group("PARCELIZATION")
+@Order(10)
+@Range(20,200)
+attr X_Size = 40
+
+@Group("PARCELIZATION")
+@Order(20)
+@Range(20,200)
+attr Z_Size = 100
+
+@Group("PARCELIZATION")
+@Order(30)
+@Range(0,100)
+attr X_Offset = 0
+
+@Group("PARCELIZATION")
+@Order(40)
+@Range(0,100)
+attr Z_Offset = 0
+
+@Group("PARCELIZATION")
+@Order(50)
+@Range("Align to Grid", "Align to Shape") #XX Add random Z sizing here.
+attr Z_Alignment = "Align to Grid"
+
+@Group("BUILDINGS", 80)
+@Range(0,6.1)
+attr Floor_Variation = 2 #xyx
+
+
+
+##########################################
+ 
+
+@StartRule
+Parcel -->
+	#cleanupGeometry(all,0.5)
+	#alignScopeToAxes(y)
+	# Initially, we see park texture on the parcel.
+	#report("Zoning",Zoning)
+	#report("Parcel_Area",geometry.area)
+	#print("USAGE_PROFILE.Zoning " + USAGE_PROFILE.Zoning)
+	#print("USAGE_PROFILE.Gross_Floor_Area " + USAGE_PROFILE.Gross_Floor_Area)
+	#print("USAGE_PROFILE.Gross_Floor_Area " + USAGE_PROFILE.Gross_Floor_Area)
+	#USAGE_PROFILE.TEST
+	SetbacksToBuildableEnvelope
+	USAGE_PROFILE.ReportUsages(Gross_Floor_Area, -1)
+	UsageVisual
+	#ReportParcel
+	report("ParcelID", PARCEL_ID)
+	#ReportsForScript(-1)
+	
+#ReportsForScript(sign) -->
+#	report("GFA", geometry.area * sign)
+#	report("Volume", geometry.volume * sign)
+#	report("Random" , rand(100) * sign)
+#	NIL
+	#XX here
+	
+
+ReportParcel -->
+	report("Site_Area", Site_Area)
+	report("Site_Gross_Plot_Ratio", Gross_Plot_Ratio)
+	report("Site_Gross_Floor_Area", Gross_Floor_Area)
+	report("Site_Height_Max", Height_Max)	
+	report("Site_Height_CAAS", Height_CAAS)	
+	report("Site_Height_Tech", Height_Tech)	
+	NIL
+	
+
+	
+	
+##########################################
+
+
+SetbacksToBuildableEnvelope -->
+	SetbackFront
+
+SetbackFront -->
+	setback(Front_Setback) { street.front: YardFront | remainder: SetbackRear }
+
+SetbackRear -->
+	setback(Rear_Setback) { street.back: YardRear | remainder: SetbackLeft }
+
+SetbackLeft -->
+	setback(Left_Setback) { street.left: YardLeft | remainder: SetbackRight }
+
+SetbackRight -->
+	setback(Right_Setback) { street.right: YardRight | remainder: SetbackDone }
+
+# Buildable area as defined by setbacks. Footprint must be contained within.
+SetbackDone -->
+	case _shapeTooSmall:
+		# XX Find out how to treat lot when too small, and what is too small (area length width).
+		#XXBUILDING_FORM.FlagWarning("Buildable area is too small for building.")
+		ShapeTooSmall
+	case _shapeTooNarrow:
+		#XXBUILDING_FORM.FlagWarning("Buildable area is too narrow for building.")
+		ShapeTooSmall
+	else:
+		# Align scope to yUp.
+		alignScopeToAxes(y)
+		# Buildings are built on level ground. 
+		# Final elevation of ground level is determined later. 
+		# Irrelevant at the macro level. XX Or is it?
+		# So at this point, we level the lot by scaling Y dimension to zero.
+		s('1,0,'1)
+		BuildableAreaFromSetbacks
+		
+
+
+
+
+_shapeTooSmall = scope.sx < minimumLotDimension || scope.sz < minimumLotDimension
+const minimumLotDimension = 20 
+
+_shapeTooNarrow = scope.sx > (scope.sz * narrownessRatio) || scope.sz > (scope.sx * narrownessRatio) 
+const narrownessRatio = 8
+
+BuildableAreaFromSetbacks -->
+	ShowEnvelope
+	BuildableAreaSubdivideToLots
+
+
+
+ShowEnvelope -->
+	case Show_Envelope:
+		s(scope.sx, 0, scope.sz)
+		center(xz) 
+		set(material.opacity, Envelope_Transparency)
+		extrude(maximumHeightFromThreeMethods)
+		color(USAGE_PROFILE.getZoningData_Color_Hex(Zoning))
+		comp(f) {
+			top: X. |
+			side: X.
+		}
+	else: 
+		NIL
+
+
+const Site_Area = geometry.area
+const Site_Footprint_Target = Coverage * Site_Area 
+@Hidden
+attr Site_Buildable_Area = 0
+@Hidden
+attr FootprintTargetSite = 0
+
+
+BuildableAreaSubdivideToLots -->
+	# We know site area and site footprint target from start shape.
+	# Using Coverage we get targetFootSite
+	# After site setbacks, we know the site's buildable area.
+	set(Site_Buildable_Area, geometry.area)
+	# Get cover1 from Site_Buildable_Area.
+	SubdivisionToLots
+
+const Envelope_Transparency = 0.5 
+	
+maximumHeightFromThreeMethods =
+	case Height_Max < Height_CAAS && Height_Max < Height_Tech: Height_Max
+	case Height_CAAS < Height_Max && Height_CAAS < Height_Tech: Height_CAAS
+	else: Height_Tech
+
+
+
+
+
+
+#######################################################
+# USAGE
+#######################################################
+
+UsageVisual -->
+	case Show_Usage:
+		t(0, maximumHeightFromThreeMethods, 0)
+		USAGE_PROFILE.BarChart(Gross_Floor_Area)
+	else:
+		NIL
+
+
+SubdivisionToLots -->
+	case Show_Buildings:
+		Parcelization
+	else:
+		color(USAGE_PROFILE.getZoningData_Color_Hex(Zoning))
+		X.
+		#NIL
+
+
+Parcelization -->
+	rotateScope(0,Rotation,0)
+	SplitX
+
+SplitX -->
+	case Z_Alignment == "Align to Grid":
+		split(x, noAdjust) {
+			X_Offset: SplitZ | 
+			{ X_Size : SplitZ }*
+		}
+	else:
+		split(x) {
+			X_Offset: SplitZ | 
+			{ X_Size : SplitZ }*
+		}
+
+SplitZ -->
+	split(z) {
+		Z_Offset: Lot | 	
+		{Z_Size : Lot }*
+	}	
+
+
+
+#@Hidden
+#attr Gross_Floor_Area = Gross_Plot_Ratio * Site_Area
+const Gross_Floor_Area = Gross_Plot_Ratio * Site_Area
+
+
+# Used only when importing building.
+#@Hidden
+attr Floor_Count = rint(Gross_Floor_Area / Site_Footprint_Target) 
+@Hidden
+attr LotArea = 0
+@Hidden
+attr LotShareOfTotalFootprint = 0
+@Hidden
+attr LotFootprintArea = 0
+
+
+Lot -->
+	set(LotArea, geometry.area)
+	# This is how much of the total footprint this lot must handle.
+	set(LotShareOfTotalFootprint, LotArea / Site_Buildable_Area)
+	set(LotFootprintArea, LotShareOfTotalFootprint * Site_Footprint_Target)
+	Lot1a
+
+
+const Threshold_Of_Lot_Development = 0.25
+const Smallest_Lot_Size = Threshold_Of_Lot_Development * X_Size * Z_Size 
+
+Lot1a -->
+	#BUILDING_FORM.FlagWarning("Buildable area is too small for building.")
+	# Align scope to yUp.
+	alignScopeToAxes(y)
+	# Buildings are built on level ground, so level the lot. 
+	s('1,0,'1)
+	# Setback of common boundary buffer.
+	LotOffsetCommonBoundaryBuffer
+
+
+
+buildingGFA = Gross_Plot_Ratio * LotArea
+
+
+LotOffsetCommonBoundaryBuffer -->
+	case Lot_Buffer <= 0:
+		InsideCommonBoundaryBuffer
+	else:
+		offset(-Lot_Buffer)
+		comp(f) {
+			border:	alignScopeToAxes(y) CommonBoundaryBuffer |
+			inside: InsideCommonBoundaryBuffer
+		}
+
+
+
+CommonBoundaryBuffer -->
+	case Lot_Boundary_Treatment == "Pavers": 
+		Pavers("world")
+	else:
+		YardWithTrees
+
+
+InsideCommonBoundaryBuffer -->
+	alignScopeToAxes(y)
+	Yard
+	InnerRect
+
+InnerRect -->
+	innerRect
+	color(0,0.3,0)
+	alignScopeToAxes(y)
+	Rotate90Check
+	#t(0,1,0)
+	#X.
+	
+	
+
+
+Rotate90Check -->
+	case scope.sz > scope.sx:
+		rotateScope(0,90,0)
+		InsertTemplateBuilding
+	else:
+		InsertTemplateBuilding
+
+
+@Hidden	
+attr template = ""
+@Hidden	
+attr innerRectX = 0
+@Hidden	
+attr innerRectZ = 0
+
+const Template_Search_Tolerance = 0.3
+
+InsertTemplateBuilding -->
+	alignScopeToAxes(y)
+	set(innerRectX, scope.sx)
+	set(innerRectZ, scope.sz)
+	set(template, getTemplate(LotFootprintArea, innerRectX, innerRectZ, Template_Search_Tolerance))
+	InsertTemplateBuildingStep2
+	
+InsertTemplateBuildingStep2 -->
+	case template == "": NIL
+	else:
+		s(0,0,0)
+		i(template)
+		center(xz)
+		s('getScaling,0,'getScaling)
+		#print("template = " + template  + ", getScaling = " + getScaling)
+		center(xz)	
+		BuildingFromFootprint
+
+getTemplate(targetFootprint, sizeX, sizeZ, upTolerance) = 
+	listRandom(TemplateSearch.SearchTemplates(targetFootprint, sizeX, sizeZ, upTolerance))
+
+getScaling = TemplateSearch.scaleAmount(template, LotFootprintArea)
+
+
+const foundationHeight = 0.15
+const foundationPatioWidth = 4
+
+BuildingFromFootprint -->
+	color(1,1,1)
+	Foundation
+	t(0, foundationHeight, 0)
+	#xx Trying to get building to change textures on same parcel. Should try it from inside building.  
+	#set(seedian, rand(100000,9999999))
+	Building.BuildingFootprint
+	
+Foundation -->
+	i("builtin:cube")
+	s(scope.sx + foundationPatioWidth, foundationHeight, scope.sz + foundationPatioWidth)
+	center(xz)
+	Pavers
+	
+Pavers -->
+	Pavers("")
+	
+Pavers(align) -->
+	case align == "world":
+		alignScopeToAxes()
+		setupProjection(0, scope.xz, 10, 10, 0, 0) 
+		projectUV(0)
+		texture(assetDirectory + "PaverGray.jpg")	
+	else: 	
+		setupProjection(0, scope.xz, 10, 10, 0, 0) 
+		projectUV(0)
+		texture(assetDirectory + "PaverGray.jpg")	
+
+
+
+
+
+
+
+
+
+
+#######################################################
+# YARD
+#######################################################
+
+@Group("Vegetation",300) @Order(1) 
+@Range("None", "Model","Fan","Analytical")
+attr Plant_Representation = "None"
+
+
+@Group("Vegetation",300) @Order(2) 
+@Range("Random Forest","Tropical","Random Shrub","Zone 6 Trees","Zone 7 Trees","Zone 8 Trees","Zone 10 Trees","Custom")
+attr Plant_Mix = "Tropical"
+
+@Group("Vegetation",300) @Order(4)
+@Range(Sparse = 0.2, Moderate = 0.5, Natural = 1.0, Dense = 3, Overgrown = 6)
+attr Plant_Density = 6
+
+@Group("Vegetation",300)
+attr Plant_MaxCountPerSpecies = 100
+
+
+ShapeTooSmall -->
+	Yard #XX or what?
+
+YardFront --> YardWithTrees
+YardRear --> YardWithTrees
+YardLeft --> YardWithTrees
+YardRight --> YardWithTrees
+
+Yard -->
+	TextureYard
+
+
+YardWithTrees -->
+	DistributePlants
+	TextureYard
+
+
+
+TextureYard -->		
+		rotateScope(0,rand(360),0)
+		setupProjection(0, scope.xz, 100, 100, 0, 0) 
+		projectUV(0)
+		texture(assetDirectory + "Park.jpg")
+
+DistributePlants -->
+	case Plant_Representation != "None":
+		set(Plant_Distributor_with_LumenRT_Models.Mix, Plant_Mix)
+		set(Plant_Distributor_with_LumenRT_Models.MaxCountPerSpecies, Plant_MaxCountPerSpecies)
+		set(Plant_Distributor_with_LumenRT_Models.Density, Plant_Density)
+		set(Plant_Distributor_with_LumenRT_Models.Plant.Representation, Plant_Representation) 
+		Plant_Distributor_with_LumenRT_Models.Generate
+	else: NIL
+

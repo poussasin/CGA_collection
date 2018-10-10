@@ -1,0 +1,304 @@
+/**
+ * File:    TemplateSearch.cga
+ * Created: 11 Jun 2014 23:39:50 GMT
+ * Author:  chri7180
+ */
+
+version "2015.0"
+
+
+
+@Range(10, 200)
+attr SizeX = 100 #scope.sx
+@Range(10, 200)
+attr SizeZ = 40 #scope.sz
+@Range(0.1, 1)
+attr Coverage = 0.4
+@Range(0.01, 0.3)
+attr UpScaleTolerance = 0.3
+
+
+
+
+
+@StartRule
+Test -->
+	print("===========")
+	print("x/z = " + SizeX / SizeZ )
+	print("Footprint_Target = " + Footprint_Target)
+	print("===========")
+	#Scale Test Box.
+	s( SizeX ,0, SizeZ )
+	# Split just to show coverage area as proportion to whole lot.
+	split(x) {
+		'Coverage: color(1,0.7,0) X. |
+		'(1-Coverage): color(1,1,0) X.
+	}
+	#set(testList, RemoveScaleDownTemplates(allAssets, "", Footprint_Target))
+	set(testList, allAssets)
+	print(testList)	
+	print(listSize(testList))	
+	Debug(Footprint_Target)
+	ScaleTest
+
+@StartRule
+TestFunction -->
+	#set(testList, FindValidTemplates(allAssets, "", Footprint_Target, UpScaleTolerance))
+	set(testList, SearchTemplates(Footprint_Target, SizeX, SizeZ , UpScaleTolerance))
+	print("TEST_FUNC = " + testList)
+	print("ListCount = " + listSize(testList))
+	color(rand(1),rand(1),rand(1))
+	
+
+
+
+@Hidden
+attr testList = ""
+
+const Footprint_Target = Coverage * SizeX * SizeZ 
+
+
+
+######################################################
+# Search Function
+
+const projectName = "/06_Massing_Study/assets/"
+const templatesDirectory = "Zoning_and_Land_Use/TemplateBuildings/Templates/"
+const allAssets = fileSearch(templatesDirectory + "*.obj")
+const fullPath = projectName + templatesDirectory 
+
+SearchTemplates(targetFootprint, sizeX, sizeZ, tolerance) = 
+	FindValidTemplates(allAssets, "", targetFootprint, sizeX, sizeZ, tolerance)
+
+		
+FindValidTemplates(oldList, newList, targetFootprint, sizeX, sizeZ, tolerance) =
+	case oldList == "": newList
+	else:
+		case isContender(listFirst(oldList), targetFootprint, sizeX, sizeZ, tolerance):
+			FindValidTemplates(restOfList(oldList), listAdd(newList,listFirst(oldList)), targetFootprint, sizeX, sizeZ, tolerance)
+		else:
+			FindValidTemplates(restOfList(oldList), newList, targetFootprint, sizeX, sizeZ, tolerance)
+
+restOfList(list) = listRange(list, 1, listSize(list))
+
+isContender(template, targetFootprint, sizeX, sizeZ, tolerance) = 
+	!isScalingDown(template, targetFootprint) && 
+	!isOutOfBounds(template, targetFootprint, sizeX, sizeZ) && 
+	!isOverScaling(template, targetFootprint, tolerance)
+	
+scaleAmount(template, targetFootprint) = relativeScalePerArea(targetFootprint, templateArea(template))
+relativeScalePerArea(targetArea, originalArea) = sqrt(targetArea / originalArea)
+#scaledX(template, targetFootprint) = templateSizeX(template) * scaleAmount(template, targetFootprint) 
+#scaledZ(template, targetFootprint) = templateSizeZ(template) * scaleAmount(template, targetFootprint) 
+isScalingDown(template, targetFootprint) = scaleAmount(template, targetFootprint) < 1
+isOutOfBounds(template, targetFootprint, sizeX, sizeZ) = 
+	templateSizeX(template) * scaleAmount(template, targetFootprint) > sizeX || 
+	templateSizeZ(template) * scaleAmount(template, targetFootprint) > sizeZ 
+isOverScaling(template, targetFootprint, tolerance) = scaleAmount(template, targetFootprint) > (1 + tolerance)	
+	
+
+
+Debug(targetFootprint) -->
+	print("allAssets = " + allAssets)
+	print("listSize(allAssets) = " + listSize(allAssets))          
+	print("testList = " + testList)
+	print("listSize(testList) = " + listSize(testList))
+	DebugTemplate(listFirst(testList),targetFootprint)
+	DebugTemplate(listRange(testList, 1,2),targetFootprint)
+	DebugTemplate(listRange(testList, 2,3),targetFootprint)
+	DebugTemplate(listRange(testList, 3,4),targetFootprint)
+	DebugTemplate(listRange(testList, 4,5),targetFootprint)
+	DebugTemplate(listRange(testList, 5,6),targetFootprint)
+	DebugTemplate(listRange(testList, 6,7),targetFootprint)
+	DebugTemplate(listRange(testList, 7,8),targetFootprint)
+	DebugTemplate(listRange(testList, 8,9),targetFootprint)
+	DebugTemplate(listRange(testList, 9,10),targetFootprint)
+	DebugTemplate(listRange(testList, 10,11),targetFootprint)
+	DebugTemplate(listRange(testList, 11,12),targetFootprint)
+	DebugTemplate(listRange(testList, 12,13),targetFootprint)
+	DebugTemplate(listRange(testList, 13,14),targetFootprint)
+	DebugTemplate(listRange(testList, 14,15),targetFootprint)
+	DebugTemplate(listLast(testList),targetFootprint)
+
+DebugTemplate(template, targetFootprint) -->
+	print("template = " + template)
+	print("templateArea(template) = " + templateArea(template))
+	print("scaleAmount(template, targetFootprint) = " + scaleAmount(template, targetFootprint))
+	print("assetInfo(template, sx) = " + assetInfo(template, sx))
+	print("assetInfo(template, sz) = " + assetInfo(template, sz))
+#	print("scaledX(template) = " + scaledX(template))
+#	print("scaledZ(template) = " + scaledZ(template))
+#	print("isScalingDown(template) = " + isScalingDown(template))
+#	print("isOutOfBounds(template) = " + isOutOfBounds(template))
+	
+	
+
+
+	
+	
+ScaleTest -->
+#			print("asset:"+listFirst(oldList))
+#			print("assetArea:"+templateArea(listFirst(oldList)))
+	Insert(0)
+	Insert(1)
+	Insert(2)
+	Insert(3)
+	Insert(4)
+	Insert(5)
+	Insert(6)
+	Insert(7)
+	Insert(8)
+	Insert(9)
+	Insert(10)
+	Insert(11)
+	Insert(12)
+	Insert(13)
+	Insert(14)
+	Insert(15)
+	
+	#i(listRange(testList, 0,1))
+
+
+
+@Hidden
+attr InsertAsset = ""
+ 
+Insert(which) -->
+	case which == 0:
+		set(InsertAsset, listFirst(testList))
+		InsertPart2(which)
+	case which == 15:
+		set(InsertAsset, listLast(testList))		
+		InsertPart2(which)
+	else:
+		set(InsertAsset, listRange(testList, which, which + 1))
+		InsertPart2(which)
+
+
+
+
+InsertPart2(which) -->
+	#print(assetInfo(InsertAsset,sx))
+	#print(assetInfo(InsertAsset,sz))
+	#print(assetInfo(InsertAsset,sz)/assetInfo(InsertAsset,sx))
+	print("Inserting(" + which + ") = " + InsertAsset)
+	print("x/z(asset) = " + assetInfo(InsertAsset,sx)/assetInfo(InsertAsset,sz))
+	t(0,0,(which + 1) * 100)
+	Hey
+	DoIt(which)
+
+DoIt(which) -->
+	s(0,0,0)
+	i(InsertAsset)
+	t(-assetInfo(InsertAsset,tx),0,-assetInfo(InsertAsset,tz))
+	SeeActualScale
+	#print("assetArea = " + templateArea(InsertAsset) + ", scalingNeeded =  " + relativeScalePerArea(Footprint_Target, geometry.area))
+	print("assetArea = " + geometry.area + ", scalingNeeded =  " + DistanceFromOne(relativeScalePerArea(Footprint_Target, geometry.area)))
+	s('relativeScalePerArea(Footprint_Target, geometry.area), 0, 
+	  'relativeScalePerArea(Footprint_Target, geometry.area))
+	# Center in xz of previous scope.
+	center(xz)
+	extrude(30) 
+	CheckIt
+
+SeeActualScale -->
+	t(160, 0, 0)
+	#s(templ,0,0)
+	color(0,0,0)
+
+DistanceFromOne(number) = 
+	case number < 1: 1 - number
+	case number > 1: number - 1
+	else: 0
+
+CheckIt -->
+	case isScalingDown(InsertAsset, Footprint_Target): color(1,0,0) X.
+	case isOutOfBounds(InsertAsset, Footprint_Target, SizeX, SizeZ): color(1,0.5,0) X.
+	case isOverScaling(InsertAsset, Footprint_Target, UpScaleTolerance): color(1,1,0) X.
+	else: color(0,1,0) X.
+
+
+
+
+Hey -->
+	t(0,-1,0)
+	color(1,0,1)
+	X.
+
+	
+# This is temp code to match current assets. (16 original templates.
+templateArea(template) = 
+    case template == fullPath + "HSEBLK_476.obj": 1099
+    case template == fullPath + "HSEBLK_221A.obj": 1254
+    case template == fullPath + "The_Interlace.obj": 1187
+    case template == fullPath + "Village_Hotel.obj": 402
+    case template == fullPath + "Citylights.obj": 456
+    case template == fullPath + "Pinnacle_at_Dunston.obj": 806
+    case template == fullPath + "Treelodge_at_Punggol.obj": 987
+    case template == fullPath + "HSEBLK_181.obj": 955
+    case template == fullPath + "HSEBLK_35.obj": 883
+    case template == fullPath + "HSEBLK_337D.obj": 778
+    case template == fullPath + "HSEBLK_435.obj": 942
+    case template == fullPath + "Dawson.obj": 925
+    case template == fullPath + "Redezvous_Hotel.obj": 1361
+    case template == fullPath + "HSEBLK_436.obj": 1649
+    case template == fullPath + "HSEBLK_367.obj": 1295
+    case template == fullPath + "W_Hotel.obj": 2706
+    case template == fullPath + "east_street_21_238.obj": 651
+    case template == fullPath + "Kang_Ching_338b.obj": 718
+    case template == fullPath + "West_Street_42_418.obj": 688
+    case template == fullPath + "West_Street_42_439.obj": 482
+    case template == fullPath + "Yung_Sheng_183.obj": 636
+	else: 0
+
+templateSizeX(template) = 
+    case template == fullPath + "HSEBLK_476.obj": 84
+    case template == fullPath + "HSEBLK_221A.obj": 90
+    case template == fullPath + "The_Interlace.obj": 71
+    case template == fullPath + "Village_Hotel.obj": 36
+    case template == fullPath + "Citylights.obj": 35
+    case template == fullPath + "Pinnacle_at_Dunston.obj": 40
+    case template == fullPath + "Treelodge_at_Punggol.obj": 54
+    case template == fullPath + "HSEBLK_181.obj": 48
+    case template == fullPath + "HSEBLK_35.obj": 51
+    case template == fullPath + "HSEBLK_337D.obj": 43
+    case template == fullPath + "HSEBLK_435.obj": 56
+    case template == fullPath + "Dawson.obj": 55
+    case template == fullPath + "Redezvous_Hotel.obj": 74
+    case template == fullPath + "HSEBLK_436.obj": 98
+    case template == fullPath + "HSEBLK_367.obj": 62
+    case template == fullPath + "W_Hotel.obj": 119
+    case template == fullPath + "east_street_21_238.obj": 28
+    case template == fullPath + "Kang_Ching_338b.obj": 42
+    case template == fullPath + "West_Street_42_418.obj": 45
+    case template == fullPath + "West_Street_42_439.obj": 35
+    case template == fullPath + "Yung_Sheng_183.obj": 40
+	else: 0
+
+templateSizeZ(template) = 
+    case template == fullPath + "HSEBLK_476.obj": 16
+    case template == fullPath + "HSEBLK_221A.obj": 20
+    case template == fullPath + "The_Interlace.obj": 20
+    case template == fullPath + "Village_Hotel.obj": 16
+    case template == fullPath + "Citylights.obj": 16
+    case template == fullPath + "Pinnacle_at_Dunston.obj": 25
+    case template == fullPath + "Treelodge_at_Punggol.obj": 27
+    case template == fullPath + "HSEBLK_181.obj": 28
+    case template == fullPath + "HSEBLK_35.obj": 34
+    case template == fullPath + "HSEBLK_337D.obj": 35
+    case template == fullPath + "HSEBLK_435.obj": 37
+    case template == fullPath + "Dawson.obj": 40
+    case template == fullPath + "Redezvous_Hotel.obj": 45
+    case template == fullPath + "HSEBLK_436.obj": 46
+    case template == fullPath + "HSEBLK_367.obj": 49
+    case template == fullPath + "W_Hotel.obj": 70
+    case template == fullPath + "east_street_21_238.obj": 26 
+    case template == fullPath + "Kang_Ching_338b.obj": 33
+    case template == fullPath + "West_Street_42_418.obj": 21 
+    case template == fullPath + "West_Street_42_439.obj": 21
+    case template == fullPath + "Yung_Sheng_183.obj": 26
+	else: 0
+
+
+
+

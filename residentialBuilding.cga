@@ -1,0 +1,301 @@
+/**
+ * File:    residentialBuilding.cga
+ * Created: 16 Feb 2017 16:05:34 GMT
+ * Author:  Esri R&D Center Zurich
+ */
+
+version "2017.0"
+
+
+@Hidden
+import Text:"/ESRI.lib/rules/General/Text.cga"
+
+
+// ******************************
+// Attributes
+// ******************************
+
+@Handle(shape=Code^2, type=selector, align=top, translate={0,1,0}, occlusion=false, repeat=none)
+@Range("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
+attr code = "0"
+
+@Hidden
+attr validCode = false
+
+// attribute from object attributes
+@Hidden
+attr OBJECTID = 0
+
+
+// ******************************
+// Variables and Functions
+// ******************************
+
+const height = 6
+
+const floor_height = 3
+const wallMargin = 2
+
+const window_width = 1
+const window_height = 1
+const window_depth = 0.1
+const windowFrameProtrusion = shutter_depth
+const windowFrame_thickness = 0.05
+const windowInset_depth = window_depth
+const windowGrill_thickness = 0.03
+const shutter_width = 0.5*window_width
+const shutter_depth = 0.08
+const windowGroup_width = window_width + 2*shutter_width
+
+const door_width = 1
+const door_height = 2
+const door_depth = 0.1
+const doorFrame_thickness = 0.15
+const doorFrameProtrusion = windowFrameProtrusion
+
+const roof_height = 3
+const roofOverhang = 0.5
+const roof_thickness = 0.1
+
+const shutter_color = "#8e0000"
+const window_color = "#bbbbbb"
+const windowFrame_color = windowGrill_color
+const windowGrill_color = "#dddddd"
+const wall_color = "#dddddd"
+const door_color = shutter_color
+const doorFrame_color = shutter_color
+const roof_color = "#5c5c5c"
+
+const doorCode_width = 0.6*door_width
+const doorCode_height = 0.18
+const doorCode_depth = 0.1
+const codeText_size = 0.09
+
+const houseNum = 101
+const wall_thickness = 0.1
+const tshirt_asset = "Objects/tshirt.obj"
+
+getAnswer(ind) =
+	case ind==0:	"8"
+	case ind==1:	"1"
+	case ind==2:	"5"
+	case ind==3:	"6"
+	case ind==4:	"2"
+	else:			"0"
+
+
+// ******************************
+// Start Rule
+// ******************************
+
+Lot -->
+	extrude(height)
+	HouseMass
+	
+	
+// ******************************
+// House
+// ******************************
+
+HouseMass -->
+	comp(f) { front: FrontFacade
+			| side:  Facade }
+	CreateOccluderTestAndRoof
+			
+FrontFacade -->
+	split(y) { ~floor_height: GroundFloor
+			 | { ~floor_height: Floor }* }
+			 
+Facade -->
+	split(y) { ~floor_height: Floor }*
+	
+GroundFloor -->
+	split(x) { { ~wallMargin: 		Wall
+			   | windowGroup_width: split(y) { ~1: 			  Wall
+			   							 	 | window_height: WindowGroup
+			   							 	 | ~1: 			  Wall } }*
+			 | ~wallMargin: Wall
+			 | door_width: 	split(y) { door_height: DoorWithFrame
+			 						 | ~1: 			Wall }
+			 | ~wallMargin: Wall }
+			 
+Floor -->
+	split(x) { { ~wallMargin: 		Wall
+			   | windowGroup_width: split(y) { ~1: 			  Wall
+			   							 	 | window_height: WindowGroup
+			   							 	 | ~1: 			  Wall } }*
+			 | ~wallMargin: Wall }
+
+WindowGroup -->
+	split(x) { shutter_width: Shutter
+			 | ~1: 			  Window
+			 | shutter_width: Shutter }
+
+Window -->
+	extrude(window_depth)
+	rotateScope(-90, 0, 0)
+	t(0, 0, -window_depth + windowFrameProtrusion)
+	split(x) { windowFrame_thickness: WindowFrame
+			 | ~1: 					  split(y) { windowFrame_thickness: WindowFrame
+			 				 				   | ~1: 					WindowPaneAndGrill
+			 				 				   | windowFrame_thickness: WindowFrame }
+			 | windowFrame_thickness: WindowFrame }
+			 	
+WindowFrame -->
+	color(windowFrame_color)
+	
+WindowPaneAndGrill -->
+	t(0, 0, -windowInset_depth)
+	comp(f) { front: color(window_color)
+					 WindowPane.
+					 WindowGrill }
+
+WindowGrill -->
+	color(windowGrill_color)
+	split(x) { ~1: 					  split(y) { ~1: 					NIL
+			 				 				   | windowGrill_thickness: WindowGrillPiece
+			 				 				   | ~1: 					NIL }
+			 | windowGrill_thickness: WindowGrillPiece
+			 | ~1: 					  split(y) { ~1: 					NIL
+			 				 				   | windowGrill_thickness: WindowGrillPiece
+			 				 				   | ~1: 					NIL } }
+WindowGrillPiece -->
+	extrude(windowGrill_thickness)
+	
+Shutter -->
+	extrude(shutter_depth)
+	color(shutter_color)
+
+DoorWithFrame -->
+	extrude(door_depth)
+	rotateScope(-90, 0, 0)
+	t(0, 0, -door_depth + doorFrameProtrusion)
+	split(x) { doorFrame_thickness: DoorFrame
+			 | ~1: 					split(y) { ~1: 					Door
+			 				 				 | doorFrame_thickness: DoorFrame }
+			 | doorFrame_thickness: DoorFrame }
+			 
+DoorFrame -->
+	color(doorFrame_color)
+	
+Door -->
+	DoorCode
+	t(0, 0, '-1)
+	comp(f) { front: color(door_color) Door. }
+	
+Wall -->
+	color(wall_color)
+			
+			 
+// ******************************
+// Door Code
+// ******************************
+	
+DoorCode -->
+	t(0, '0.6, 0)
+	s(doorCode_width, doorCode_height, doorCode_depth)
+	center(x)
+	split(x) { ~1:   Code(0, code)
+			 | ~0.2: NIL
+			 | ~1:   Code(1, code)
+			 | ~0.2: NIL
+			 | ~1:   Code(2, code)
+			 | ~0.2: NIL
+			 | ~1:   Code(3, code)
+			 | ~0.2: NIL
+			 | ~1:   Code(4, code) }
+			 
+Code(ind, codeStr) -->
+	Wall.
+	comp(f) { front: CodeText(codeStr) }
+	TestCode(ind)
+		
+CodeText(codeStr) -->
+	t(0, 0, 0.01)
+	rotateScope(90, 0, 0)
+	set(Text.Text, codeStr)
+	set(Text.Size, codeText_size)
+	Text.Generate
+	
+TestCode(ind) -->
+	case code==getAnswer(ind):
+		NIL
+	else:
+		t(0, 0, '-0.5)
+		label("Check")
+		NIL
+
+	
+// ******************************
+// Roof and Check Answer
+// ******************************
+
+CreateOccluderTestAndRoof -->
+	case touches(intra, "Check"):
+		set(validCode, false)
+		comp(f) { top: Roof }
+	else:
+		set(validCode, true)
+		comp(f) { top: Roof }
+		
+Roof -->
+	case OBJECTID==houseNum && validCode:
+		offset(-wall_thickness)
+		comp(f) { inside: HouseInside | border: Wall }
+		report("Progress", 1)
+	else:
+		roofGable(byHeight, roof_height, roofOverhang)
+		RoofMass
+		comp(f) { bottom: NIL
+				| top:    extrude(world.up, roof_thickness)
+					      RoofPart
+				| all:    Wall }
+
+RoofMass -->
+	NIL
+
+RoofPart -->
+	color(roof_color)
+		
+
+// ******************************
+// Inside House
+// ******************************
+
+	
+HouseInside -->
+	t(0, 0, -height + wall_thickness)
+	extrude(height - wall_thickness)
+	comp(f) { bottom: TextureFloor | side: TextureSide }
+	Treasure
+	
+TextureFloor -->
+	color(wall_color)
+	
+TextureSide -->
+	color(wall_color)
+	
+Treasure -->
+	t(0, 0, '-0.25)
+	i(tshirt_asset, yUp, keepSizeAlignPosition)
+	Shirt.
+	ShirtText
+	
+ShirtText -->
+	primitiveCube
+	comp(f) { front: split(x) { ~1: NIL
+							  | ~2: split(y) { '0.4:  NIL
+							  				 | ~1:    rotateScope(90, 0, 0)
+							  				 	      split(z) { ~1: PrintShirtText("I found the")
+							  				 	   			   | ~1: PrintShirtText("treasure, and")
+							  				 	   			   | ~1: PrintShirtText("all I got was")
+							  				 	   			   | ~1: PrintShirtText("this shirt.") }
+							  				 | '0.25: NIL }
+							  | ~1: NIL } }
+	
+PrintShirtText(textStr) -->
+	set(Text.Text, textStr)
+	set(Text.Size, 0.19)
+	Text.Generate
+
+

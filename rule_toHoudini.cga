@@ -1,0 +1,13 @@
+/**
+ * File:    rule_toHoudini.cga
+ * Created: 12 Sep 2018 02:21:37 GMT
+ * Author:  Administrator
+ */
+
+version "2018.0"
+
+attr height = 1
+
+@StartRule
+Init -->
+   extrude(height)

@@ -1,0 +1,117 @@
+/**
+ * File:    instance_city_on_ground.cga
+ * Created: 5 May 2010 09:21:09 GMT
+ * Author:  Esri R&D Center Zurich
+ */
+
+version "2014.0"
+
+# path to building assets
+attr scifiAssetFormat = "scifi_building_*.obj"
+ 
+# street textures
+const street_tex = "scifi_texture_street_dark.jpg"
+const streetSide_tex = "scifi_texture_street_bright.jpg"
+
+# scale factors for street texture
+factor_v = rand()*0.004 + 0.007 	// in range [0.007, 0.011], this fraction of street texture image's height corresponds to 1m
+factor_u = factor_v*imageInfo(street_tex, sy)/imageInfo(street_tex, sx)		// divide by w:h aspect ratio of texture image (1280x600)
+
+
+# RULES ###########
+
+###################################
+# Buildings
+#
+
+@StartRule 
+Lot -->  
+	Ground
+	innerRectangle(edge) {shape: Footprint}
+
+LotCorner --> Ground
+LotInner --> Lot
+
+Footprint -->
+	alignScopeToGeometry(yUp, 0, longest)
+	s('1, 0, '1)
+	Building
+
+ 
+Building --> 
+	# select one of the best 3 fitting building asset
+	i(assetApproxSize(scifiAssetFormat, "xz", 3))
+	# specularity
+	set(material.specular.r, 1) # for the looks in the CityEngine we add some over-exagerated specularity (otherwise the model is too dark for opengl...)
+	set(material.specular.g, 1)
+	set(material.specular.b, 1)		
+	set(material.specularmap, "scifi_texture_refl_2k.jpg")
+	set(material.shininess, 20)
+	# bump
+	set(material.bumpmap, "scifi_texture_bump_2k.jpg")
+	set(material.bumpValue, -.1) 
+	# opacity
+	set(material.opacitymap, "scifi_texture_opacity_2k.jpg")
+	# reflectivity
+	set(material.reflectivity, 0.8)
+
+
+Ground -->
+	setupProjection(0,world.xz,300,2048) projectUV(0)
+	texture("scifi_texture_ground.jpg")
+	# specularity
+	set(material.specular.r, 1) # for the looks in the CityEngine we add some over-exagerated specularity (otherwise the model is too dark for opengl...)
+	set(material.specular.g, 1)
+	set(material.specular.b, 1)		
+	set(material.specularmap, "scifi_texture_ground.jpg")
+	set(material.shininess, 15)
+	# bump
+	set(material.bumpmap, "scifi_texture_ground.jpg")
+	set(material.bumpValue, -.25) 
+	# reflectivity
+	set(material.reflectivity, 0.5)	
+
+
+
+###################################
+# Streets
+#
+
+Street --> StreetTex
+Sidewalk --> comp(f) {all: split(y) { 2 : StreetLine | ~1: Ground } } 
+Crossing --> StreetTex
+
+Junction 		--> Crossing
+JunctionEntry 	--> Street
+Joint		 	--> Street
+
+Freeway 		--> Street
+FreewayEntry	--> Street
+
+Roundabout		--> Street
+RoundaboutIsland--> Sidewalk
+RoundaboutEntry --> Street
+
+
+StreetTex --> 
+	scaleUV(0, factor_u*geometry.du(0, unitSpace)/geometry.du(0, uvSpace), factor_v*geometry.dv(0, unitSpace)/geometry.dv(0, uvSpace))
+	translateUV(0, rand(), rand())
+	texture(street_tex)
+	# specularity
+	set(material.specular.r, 0.7) # for the looks in the CityEngine we add some over-exagerated specularity (otherwise the model is too dark for opengl...)
+	set(material.specular.g, 0.7)
+	set(material.specular.b, 0.7)		
+	# shininess
+	set(material.shininess, 60)
+	# reflectivity
+	set(material.reflectivity, 0.3)
+		
+StreetLine --> 
+	scaleUV(0, factor_u*geometry.du(0, unitSpace)/geometry.du(0, uvSpace), factor_v*geometry.dv(0, unitSpace)/geometry.dv(0, uvSpace))
+	translateUV(0, rand(), rand())
+	texture(streetSide_tex)
+	 
+
+
+
+

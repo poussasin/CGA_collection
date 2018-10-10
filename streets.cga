@@ -1,0 +1,37 @@
+/**
+ * File:    streets.cga
+ * Created: 13 Mar 2017 15:49:24 GMT
+ * Author:  Esri R&D Center Zurich
+ */
+
+version "2017.0"
+
+
+// ******************************
+// Variables
+// ******************************
+
+const street_color = "#333333"
+const sidewalk_color = "#aaaaaa"
+
+const street_height = 0.1
+const sidewalk_height = street_height + 0.1
+
+
+// ******************************
+// Start Rules
+// ******************************
+
+Street -->
+	extrude(street_height)
+	color(street_color)
+	
+Crossing --> Street
+Joint --> Street
+
+Sidewalk -->
+	extrude(sidewalk_height)
+	color(sidewalk_color)
+	
+Block --> NIL
+	

@@ -1,0 +1,139 @@
+/**
+ * File:    map.cga
+ * Created: 17 Feb 2017 15:44:54 GMT
+ * Author:  Esri R&D Center Zurich
+ */
+
+version "2017.0"
+
+
+@Hidden
+import Text:"/ESRI.lib/rules/General/Text.cga"
+
+
+// ******************************
+// Attributes
+// ******************************
+
+@Handle(shape=GridCell^3, type=toggle, occlusion=false, repeat=none)
+attr flip = false
+
+
+// ******************************
+// Variables and Functions
+// ******************************
+
+const height = 3
+const depth = 0.25
+const n = 4
+const gridSize = height/n
+const spacing = 0.05
+
+const bar_diameter = 0.05
+
+const map1_tex = "Textures/map1.png"
+const map2_tex = "Textures/map2.png"
+
+
+// ******************************
+// Start Rule
+// ******************************
+
+Lot -->
+	s(height + (n-1)*spacing, 0, depth)
+	center(xz)
+	extrude(height + (n+2)*spacing)
+	Grid
+	CreateOccluderTest
+	report("ProgressTotal", 2)
+	report("Progress", 0)
+
+
+// ******************************
+// Map
+// ******************************
+
+Grid -->
+	split(x) { gridSize: GridCol(0)
+						 Bar
+			 | ~spacing: NIL
+			 | gridSize: GridCol(1)
+						 Bar
+			 | ~spacing: NIL
+			 | gridSize: GridCol(2)
+						 Bar
+			 | ~spacing: NIL
+			 | gridSize: GridCol(3)
+						 Bar }
+
+Bar -->
+	s(bar_diameter, scope.sy, bar_diameter)
+	center(xz)
+	primitiveCylinder
+	Cylinder.
+	t(0, '1, 0)
+	s('1, scope.sx, '1)
+	primitiveSphere
+	split(y) { ~1: NIL 
+			 | ~1: t(0, '-1, 0)
+			 	   Cap. }
+
+GridCol(col_ind) -->
+	split(y) { ~2*spacing: NIL
+			 | gridSize:   GridCell(0, col_ind, 50%: true else: false)
+			 | ~spacing:   NIL
+			 | gridSize:   GridCell(1, col_ind, 50%: true else: false)
+			 | ~spacing:   NIL
+			 | gridSize:   GridCell(2, col_ind, 50%: true else: false)
+			 | ~spacing:   NIL
+			 | gridSize:   GridCell(3, col_ind, 50%: true else: false)
+			 | ~spacing:   NIL }
+	
+GridCell(row_ind, col_ind, startState) -->
+	case (!startState && flip) || (startState && !flip):
+		r(scopeCenter, 0, 180, 0)
+		comp(f) { front: Front(row_ind, col_ind)
+				| back:  Back(row_ind, n - col_ind - 1)
+				| all:   Side. }
+		Cell_Incorrect(row_ind, col_ind)
+	else:
+		comp(f) { front: Front(row_ind, col_ind)
+				| back:  Back(row_ind, n - col_ind - 1)
+				| all:   Side. }
+		Cell_Correct(row_ind, col_ind)
+	
+Front(row_ind, col_ind) -->
+	setupProjection(0, scope.xy, height, height, -col_ind*gridSize, -row_ind*gridSize)
+	texture(map1_tex)
+	projectUV(0)
+	
+Back(row_ind, col_ind) -->
+	setupProjection(0, scope.xy, height, height, -col_ind*gridSize, -row_ind*gridSize)
+	texture(map2_tex)
+	projectUV(0)
+
+
+// ******************************
+// Check Answer
+// ******************************
+
+Cell_Correct(row_ind, col_ind) -->
+	t(0, 0, depth + 1)
+	label("Check")
+	NIL
+	
+Cell_Incorrect(row_ind, col_ind) -->
+	label("Check")
+	NIL	
+
+CreateOccluderTest -->
+	TestCorrect
+
+TestCorrect -->
+	case touches(intra, "Check"):
+		NIL
+	else:
+		report("Progress", 1)
+		NIL
+	
+	

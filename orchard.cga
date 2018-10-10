@@ -1,0 +1,212 @@
+/**
+ * File:    orchard.cga
+ * Created: 20 Feb 2017 16:19:37 GMT
+ * Author:  Esri R&D Center Zurich
+ */
+
+version "2017.0"
+
+
+// ******************************
+// Attributes
+// ******************************
+
+@Handle(shape=DynamicTree^2, type=selector, occlusion=false, repeat=none)
+@Range("Don't pick any", "Pick 1 orange", "Pick 2 oranges", "Pick 3 oranges", "Pick 4 oranges")
+attr pickOranges = "Don't pick any"
+
+
+// ******************************
+// Variables and Functions
+// ******************************
+
+const elevation = 0.1
+
+const border_thickness = 0.5
+const border_color = "#333333"
+
+const tree_asset = "/ESRI.lib/assets/Plants/Orange_Tree/Orange_Tree_Model_0.obj"
+const treeTrunk_diameter = 0.2
+const treeTrunk_color = "#b08564"
+const treeTrunk_height = 4
+const treeCrown_diameter = 4
+const treeCrown_color = "#7abf74"
+
+const orangeSpace = 2.2
+const orange_width = 0.5
+const staticOrange_color = "#ffbf2d" //"#db6400"
+const dynamicOrange_color = "#fdf277" //"#ffbf0d"
+
+const grid_size = 4
+const list_static = 	"1;0;0;1;0;1;1;0;0;1;1;0;1;0;0;1;"
+const list_answers = 	"3;1;4;2;2;4;1;3;1;3;2;4;4;2;3;1;"
+
+isStatic(row, col) = listItem(list_static, row*grid_size + col) == "1"
+getAnswer(row, col) = float(listItem(list_answers, row*grid_size + col))
+
+
+// ******************************
+// Start Rule
+// ******************************
+
+Lot -->
+	t(0, elevation, 0)
+	Borders
+	SplitX
+	CreateOccluderTest
+	report("ProgressTotal", 1)
+	
+		
+// ******************************
+// Orchard
+// ******************************
+
+Borders -->
+	offset(-border_thickness)
+	comp(f) { border: Border
+			| inside: BorderX
+					  BorderY }
+					  
+BorderX -->
+	s(border_thickness, '1, 0)
+	center(x)
+	Border
+
+BorderY -->
+	s('1, border_thickness, 0)
+	center(y)
+	Border
+
+Border -->
+	extrude(0.5*border_thickness)
+	color(border_color)
+	
+SplitX -->
+	split(x) { ~1: SplitZ(split.index)
+			 | ~1: SplitZ(split.index)
+			 | ~1: SplitZ(split.index) 
+			 | ~1: SplitZ(split.index) }
+			 
+SplitZ(col_ind) -->
+	split(z) { ~1: Tree(split.index, col_ind)
+			 | ~1: Tree(split.index, col_ind)
+			 | ~1: Tree(split.index, col_ind) 
+			 | ~1: Tree(split.index, col_ind) }
+			 
+Tree(row_ind, col_ind) -->
+	case isStatic(row_ind, col_ind):
+		NIL
+	else:
+		DynamicTree(row_ind, col_ind)	
+	
+Oranges(n, orange_color) -->
+	s('0.4, 0, '0.4)
+	center(xz)
+	offset(-orangeSpace)
+	comp(f) { border: TestOrange(comp.index, n, orange_color) }
+	
+TestOrange(testNum, n, orange_color) -->
+	case testNum<n:
+		offset(-0.5*orange_width, inside)
+		scatter(surface, 1, uniform) { Orange(orange_color) }
+	else:
+		NIL
+		
+Orange(orange_color) -->
+	s(orange_width, orange_width, orange_width)
+	center(xz)
+	primitiveSphere
+	color(orange_color)
+
+DynamicTree(row_ind, col_ind) -->
+	case pickOranges=="Pick 1 orange":
+		Oranges(1, dynamicOrange_color)
+		extrude(treeTrunk_height)
+		Tree(dynamicOrange_color)
+		TestTree(row_ind, col_ind, 1)
+	case pickOranges=="Pick 2 oranges":
+		Oranges(2, dynamicOrange_color)
+		extrude(treeTrunk_height)
+		Tree(dynamicOrange_color)
+		TestTree(row_ind, col_ind, 2)
+	case pickOranges=="Pick 3 oranges":
+		Oranges(3, dynamicOrange_color)
+		extrude(treeTrunk_height)
+		Tree(dynamicOrange_color)
+		TestTree(row_ind, col_ind, 3)
+	case pickOranges=="Pick 4 oranges":
+		Oranges(4, dynamicOrange_color)
+		extrude(treeTrunk_height)
+		Tree(dynamicOrange_color)
+		TestTree(row_ind, col_ind, 4)
+	else:
+		Oranges(0, dynamicOrange_color)
+		extrude(treeTrunk_height)
+		Tree(dynamicOrange_color)
+		TestTree(0, 0, 0)
+		
+Tree(orange_color) -->
+	Crown(orange_color)
+	s(treeTrunk_diameter, treeTrunk_height, treeTrunk_diameter)
+	center(xz)
+	primitiveCylinder
+	color(treeTrunk_color)
+	Trunk.
+	
+Crown(orange_color) -->
+	color(treeCrown_color)
+	t(0, treeTrunk_height, 0)
+	s(treeCrown_diameter, treeCrown_diameter, treeCrown_diameter)
+	center(xz)
+	primitiveSphere(8, 8)
+	Lobe(orange_color)
+	BottomLobes(orange_color, rand(-0.8, 0.8), rand(-0.8, 0.8))
+	
+BottomLobes(orange_color, offset_x, offset_z) -->
+	[ t(offset_x, -rand(0.1, 0.5)*scope.sy, offset_z)
+	  Lobe(orange_color) ]
+	[ t(-offset_x, -rand(0.1, 0.5)*scope.sy, -offset_z)
+	  Lobe(orange_color) ]
+	  
+Lobe(orange_color) -->
+	SingleLobe.
+	comp(f) { all: OrangeOnTree(orange_color) }
+	
+OrangeOnTree(orange_color) -->
+	5%:
+		case scope.sx>orange_width && scope.sy>orange_width:
+			set(trim.vertical, false)
+			scatter(surface, 1, uniform) { t(0, rand(-0.9*orange_width, -0.2*orange_width), 0)
+										   Orange(orange_color) }
+		else:
+			NIL
+	else:
+		NIL
+		
+		
+// ******************************
+// Check Answer
+// ******************************
+
+CreateOccluderTest -->
+	extrude(treeTrunk_height)
+	TestCorrect
+	
+TestCorrect -->
+	case touches(intra, "Check"):
+		NIL
+	else:
+		report("Progress", 1)
+		report("Code.Orchard", 5)
+		NIL
+	
+TestTree(row_ind, col_ind, nOranges) -->
+	case nOranges==getAnswer(row_ind, col_ind):
+		t(0, treeTrunk_height + 1, 0)
+		label("Check")
+		NIL
+	else:
+		label("Check")
+		NIL
+	
+		

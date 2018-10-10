@@ -1,0 +1,137 @@
+/**
+ * File:    instances_along_streets.cga
+ * Created: 5 Jan 2016 14:08:50 GMT
+ * Author:  Esri R&D Center Zurich
+ */
+
+version "2015.2"
+
+
+
+
+
+################################################################
+## ATTRIBUTES
+##
+
+@Group("Buildings")  #######################################
+
+@Order(1) @Directory
+@Description("folder containing building assets")
+attr buildingLibrary = "assets/"
+
+@Order(2)
+@Description("min scale factor for building assets")
+attr minBuildingScale = 0.9
+
+@Order(3)
+@Description("max scale factor for building assets")
+attr maxBuildingScale = 1.1
+
+# get random building from library folder
+getRandomBuilding = fileRandom(buildingLibrary + "*.obj")
+
+# get random scale factor for building assets
+getRandomBuildingScale =
+	case minBuildingScale > maxBuildingScale :
+		minBuildingScale
+	else :
+		rand(minBuildingScale, maxBuildingScale) 
+
+@Group("Spacing") #######################################
+
+@Order(1)
+@Description("min spacing between buildings (multiplicative factor of building size)")
+attr minSpacingFactor = 1.2
+
+@Order(2)
+@Description("max spacing between buildings (multiplicative factor of building size)")
+attr maxSpacingFactor = 1.4
+
+# get random spacing factor to determine spacing between buildings
+getRandomSpacing =
+	case minSpacingFactor > maxSpacingFactor :
+		minSpacingFactor
+	else :
+		rand(minSpacingFactor, maxSpacingFactor)
+ 
+@Group("Street Parameters ") #######################################
+ 
+@Description("streetWidth on street shape. wide streetWidth (e.g. 100) recommended to avoid occlusions on curvy streets.")
+attr streetWidthActual = 100
+
+@Description("desired street width (must be less than streetWidth). models from library are aligned around this offset.")
+attr streetWidthWanted = 30
+ 
+
+ 
+ 
+ 
+################################################################
+## START RULES
+## 
+ 
+# use the sidewalk shape to distribute the objects along the curved street
+@StartRule 
+Sidewalk --> 
+	Sidewalk(getRandomBuilding, getRandomBuildingScale)
+	
+# split street to desired width
+@StartRule
+Street -->  	
+	split(v,unitSpace,0){ ~1				: NIL 
+						| streetWidthWanted	: StreetStrip
+						| ~1				: NIL }
+
+@StartRule
+Joint -->
+	Street
+	
+		
+	
+################################################################
+## RULES
+## 
+ 
+# sidewalk - calc desired asset size
+# asset			asset to insert
+# randScale		scale factor for asset
+Sidewalk(asset, randScale) -->	
+	Sidewalk(asset, assetInfo(asset, sx)*randScale, assetInfo(asset, sz)*randScale, getRandomSpacing)
+		
+# sidewalk - recursively insert asset along sidewalk
+# asset			asset to insert
+# width			desired asset width
+# depth			desired asset depth
+# randSpacing	spacing factor to determine spacing between buildings
+Sidewalk(asset, width, depth, randSpacing) -->  # split in u direction works also in case the street is curved
+	split(u,unitSpace,0){ width/2*randSpacing-0.05	: NIL 
+						| 0.1						: MyBuilding(asset, width, depth)
+						| width/2*randSpacing-0.05	: NIL 
+						| ~1						: Sidewalk }
+
+# building
+# asset			asset to insert
+# width			desired asset width
+# depth			desired asset depth
+MyBuilding(asset, width, depth) -->
+	alignScopeToGeometry(yUp, 0, 0)
+	r(0, 180, 0)
+	t(0, 0, -(streetWidthActual-streetWidthWanted)/2)
+	s(width, 0, depth)
+	center(x)
+	i(asset)
+	set(material.specular.r, 0.5)
+	set(material.specular.g, 0.5)
+	set(material.specular.b, 0.5)
+	set(material.reflectivity, 0.2)
+	
+# set street color and materials
+StreetStrip -->
+	color(0.9, 0.9, 0.9, 0.3)
+	set(material.specular.r, 1)
+	set(material.specular.g, 1)
+	set(material.specular.b, 1)
+	set(material.shininess, 80)
+	set(material.reflectivity, 0.8)
+	

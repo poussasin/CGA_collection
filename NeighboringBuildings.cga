@@ -1,0 +1,31 @@
+/**
+ * File:    NeighboringBuildings.cga
+ * Created: 7 Jul 2015 17:44:25 GMT
+ * Author:  Esri R&D Center Zurich
+ */
+
+version "2016.0"
+
+
+@Range(0, 1)
+@Description("opacity of neighboring buildings")
+attr opacity = 0.5
+
+@Range(0, 40)
+@Handle(shape=Mass.)
+attr height = 7
+
+const neighboringBuilding_color = "#cccccc"
+
+
+// ------------------------------
+// Rules
+// ------------------------------
+
+@StartRule
+Lot -->
+	extrude(world.up, height)
+	color(neighboringBuilding_color)
+	set(material.opacity, opacity) Mass.
+	
+

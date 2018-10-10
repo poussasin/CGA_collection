@@ -1,0 +1,115 @@
+/**
+ * File:    instance_city_in_space.cga
+ * Created: 06 May 2010 13:09:10 GMT
+ * Author:  Esri R&D Center Zurich
+ */
+ 
+version "2014.0"
+
+# path to building assets
+attr buildingAssetFormat = "scifi_building_*.obj"
+
+// set to true for WebScene export
+attr doubleSidedGround = false
+
+# RULES ###########
+
+@StartRule
+Lot --> 
+	alignScopeToGeometry(zUp,1) Parcel
+
+# Prepare the building parcel	
+	
+Parcel --> 
+	case scope.sy > 14:
+		BuildingGround
+		innerRectangle(edge) {shape : alignScopeToGeometry(yUp,0,longest) Footprint}
+	else : 
+		Street # here we catch the long narrow shapes as streets
+	
+	
+
+
+# Finetune the footprint
+Footprint -->
+	case scope.sz*1.7 < scope.sx:
+		split(x){ ~rand(0.3,1): Footprint | ~rand(0.2) : NIL | ~rand(0.3,1): Footprint } # recursively subdivide the footprint
+	else : 
+		 s('1,0,'1) Building
+
+
+
+# Insert the asset on the Footprint
+Building -->
+	# choose building out of top 7 best fitting assets
+	i(assetApproxSize(buildingAssetFormat, "xz", 7))
+	BuildingMaterial
+
+
+
+# set building material details
+BuildingMaterial -->
+	# specularity
+	set(material.specular.r, 1) # for the looks in the CityEngine we add some over-exagerated specularity (otherwise the model is too dark for opengl...)
+	set(material.specular.g, 1)
+	set(material.specular.b, 1)		
+	set(material.specularmap, "scifi_texture_refl_2k.jpg")
+	set(material.shininess, 20)
+	# bump
+	set(material.bumpmap, "scifi_texture_bump_2k.jpg")
+	set(material.bumpValue, -.1) 
+	# opacity
+	set(material.opacitymap, "scifi_texture_opacity_2k.jpg")
+	# reflectivity
+	set(material.reflectivity, 0.8)
+
+
+
+BuildingGround -->
+	
+	setupProjection(0,world.xz,300,2048) projectUV(0)
+	texture("assets/scifi_texture_ground.jpg")
+	# specularity
+	set(material.specular.r, 0.3) # for the looks in the CityEngine we add some over-exagerated specularity (otherwise the model is too dark for opengl...)
+	set(material.specular.g, 0.3)
+	set(material.specular.b, 0.3)		
+	set(material.specularmap,"scifi_texture_ground.jpg")
+	set(material.shininess, 15)
+	# bump
+	set(material.bumpmap,"assets/scifi_texture_ground.jpg")
+	set(material.bumpValue, -.45) 
+	# reflectivity
+	set(material.reflectivity, 0.25) 
+	Ground.
+	DoubleSidedGround
+
+DoubleSidedGround -->	
+	case doubleSidedGround == true:
+		reverseNormals t(0,0,-1) DoubleSidedGround.
+		 
+	else: NIL 
+	
+###################################
+# Streets
+#
+
+Street -->
+	setupProjection(0,world.xz,900,150) projectUV(0)
+	texture("assets/scifi_texture_street_bright.jpg")
+	# specularity
+	set(material.specular.r, 0.5) # for the looks in the CityEngine we add some over-exagerated specularity (otherwise the model is too dark for opengl...)
+	set(material.specular.g, 0.5)
+	set(material.specular.b, 0.5)		
+	#set(material.specularmap,"assets/scifi_texture_street_dark.jpg")
+	set(material.shininess, 60)
+	# reflectivity
+	set(material.reflectivity, 0.3)
+	Ground.
+	DoubleSidedGround
+	
+Border --> comp(f){ all: s('1,0,0) BorderLine }
+
+BorderLine --> s('1.2,16,16) center(xyz) i("cylinder_x_8.obj") Street
+
+
+	
